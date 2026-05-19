@@ -1,0 +1,104 @@
+{
+  "songs": [
+    {
+      "id": "song-1",
+      "title": "Bhel Poori",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 223,
+      "file": "03 - Bhel Poori.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-2",
+      "title": "Naari Naari",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 238,
+      "file": "05 - Naari Naari.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-3",
+      "title": "Aasa Pulla",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 244,
+      "file": "Aasa Pulla.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-4",
+      "title": "Ada Bommale",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 251,
+      "file": "Ada_Bommale.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-5",
+      "title": "Mutta Kalakki",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 214,
+      "file": "Mutta Kalakki.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-6",
+      "title": "Oru Peru Varalaaru",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 286,
+      "file": "Oru Peru Varalaaru.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-7",
+      "title": "Pavazha Malli",
+      "artist": "NaaSongs",
+      "album": "Think Indie",
+      "duration": 232,
+      "file": "Pavazha Malli (From _Think Indie_) - NaaSongs.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Indie"
+    },
+    {
+      "id": "song-8",
+      "title": "Raavana Mavandaa",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 205,
+      "file": "Raavana Mavandaa.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    },
+    {
+      "id": "song-9",
+      "title": "Raga of Revenge",
+      "artist": "Anirudh Ravichander",
+      "album": "DC",
+      "duration": 241,
+      "file": "Raga of Revenge (From DC) - Anirudh Ravichander.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Soundtrack"
+    },
+    {
+      "id": "song-10",
+      "title": "Thalapathy Kacheri",
+      "artist": "Local Library",
+      "album": "GT Music Collection",
+      "duration": 260,
+      "file": "Thalapathy Kacheri.mp3",
+      "cover": "covers/default.jpg",
+      "genre": "Tamil"
+    }
+  ]
+}

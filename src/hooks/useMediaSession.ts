@@ -1,0 +1,79 @@
+import { useEffect } from 'react';
+import type { Song } from '@/types/music';
+
+interface Args {
+  song: Song | null;
+  isPlaying: boolean;
+  duration: number;
+  currentTime: number;
+  onPlay: () => void;
+  onPause: () => void;
+  onNext: () => void;
+  onPrev: () => void;
+  onSeek: (t: number) => void;
+}
+
+/**
+ * MediaSession + background-playback wiring.
+ * - Updates lock-screen, Bluetooth, OS media controls.
+ * - Audio keeps playing when the tab is backgrounded / browser closed / screen off
+ *   because the Audio element + MediaSession together signal "active media" to the OS.
+ */
+export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay, onPause, onNext, onPrev, onSeek }: Args) {
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !song) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      artwork: [
+        { src: `/songs/${song.cover}`, sizes: '512x512', type: 'image/jpeg' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      ],
+    });
+  }, [song]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+    try {
+      ms.setActionHandler('play', () => onPlay());
+      ms.setActionHandler('pause', () => onPause());
+      ms.setActionHandler('previoustrack', () => onPrev());
+      ms.setActionHandler('nexttrack', () => onNext());
+      ms.setActionHandler('seekto', (d: any) => {
+        if (typeof d.seekTime === 'number') onSeek(d.seekTime);
+      });
+      ms.setActionHandler('seekbackward', (d: any) => onSeek(Math.max(0, currentTime - (d.seekOffset || 10))));
+      ms.setActionHandler('seekforward', (d: any) => onSeek(Math.min(duration, currentTime + (d.seekOffset || 10))));
+    } catch {}
+    return () => {
+      try {
+        ms.setActionHandler('play', null);
+        ms.setActionHandler('pause', null);
+        ms.setActionHandler('previoustrack', null);
+        ms.setActionHandler('nexttrack', null);
+        ms.setActionHandler('seekto', null);
+        ms.setActionHandler('seekbackward', null);
+        ms.setActionHandler('seekforward', null);
+      } catch {}
+    };
+  }, [onPlay, onPause, onNext, onPrev, onSeek, currentTime, duration]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !duration) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        position: Math.min(currentTime, duration),
+        playbackRate: 1,
+      });
+    } catch {}
+  }, [currentTime, duration]);
+}
