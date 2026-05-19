@@ -36,7 +36,8 @@ export function SleepTimer() {
         <Button
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 rounded-full btn-press relative ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+          className={`tap-target touch-manipulation relative h-10 w-10 rounded-full btn-press ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+          data-no-swipe="true"
         >
           <Moon className="w-4 h-4" />
           {isActive && (

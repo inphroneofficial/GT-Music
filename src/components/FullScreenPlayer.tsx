@@ -20,7 +20,7 @@ export function FullScreenPlayer() {
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume, currentTime, duration, seek,
+    volume, setVolume, currentTime, duration, seek, preferNativeAudio,
     isLiked, toggleLike, isFullScreen, setIsFullScreen,
     isQueueOpen, setIsQueueOpen, settings, updateSettings,
   } = useMusic();
@@ -214,20 +214,32 @@ export function FullScreenPlayer() {
 
           <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
             <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Volume</span>
-              <span>{Math.round(volume * 100)}%</span>
+              <span>{preferNativeAudio ? 'Device Volume' : 'Volume'}</span>
+              <span>{preferNativeAudio ? 'Use phone buttons' : `${Math.round(volume * 100)}%`}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                className="tap-target touch-manipulation flex h-11 w-11 items-center justify-center rounded-full bg-background/50 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-                data-no-swipe="true"
-              >
-                <VolumeIcon className="h-4 w-4" />
-              </button>
-              <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="flex-1 cursor-pointer" />
-            </div>
+            {preferNativeAudio ? (
+              <div className="flex items-center gap-3 rounded-xl bg-background/40 px-3 py-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-background/60 text-primary">
+                  <VolumeIcon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Volume controlled by your device</p>
+                  <p className="text-xs text-muted-foreground">Use your Android or iPhone volume buttons while music is playing.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                  className="tap-target touch-manipulation flex h-11 w-11 items-center justify-center rounded-full bg-background/50 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+                  data-no-swipe="true"
+                >
+                  <VolumeIcon className="h-4 w-4" />
+                </button>
+                <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="flex-1 cursor-pointer" />
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">

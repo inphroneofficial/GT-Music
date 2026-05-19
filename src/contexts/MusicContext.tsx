@@ -14,6 +14,7 @@ interface MusicContextType {
   volume: number;
   currentTime: number;
   duration: number;
+  preferNativeAudio: boolean;
   allSongs: Song[];
   loading: boolean;
   likedSongIds: string[];
@@ -123,7 +124,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [queueIndex, setQueueIndex] = useState(0);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>('off');
-  const [volume, setVolumeState] = useState(0.7);
+  const [volume, setVolumeState] = useState(() => shouldPreferNativeAudio() ? 1 : 0.7);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -164,7 +165,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
-      audioRef.current.volume = 0.7;
+      audioRef.current.volume = preferNativeAudio ? 1 : 0.7;
       audioRef.current.preload = 'auto';
       audioRef.current.crossOrigin = 'anonymous';
       // Background playback: keep audio active even when tab hidden
@@ -186,7 +187,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
     };
-  }, []);
+  }, [preferNativeAudio]);
 
   // Reduced motion attribute on <html>
   useEffect(() => {
@@ -420,9 +421,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const setVolume = useCallback((vol: number) => {
+    if (preferNativeAudio) {
+      setVolumeState(1);
+      if (audioRef.current) audioRef.current.volume = 1;
+      return;
+    }
     setVolumeState(vol);
     if (audioRef.current) audioRef.current.volume = vol;
-  }, []);
+  }, [preferNativeAudio]);
 
   const toggleShuffle = useCallback(() => setShuffle(p => !p), []);
   const toggleRepeat = useCallback(() => {
@@ -555,7 +561,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <MusicContext.Provider value={{
-      currentSong, isPlaying, queue, queueIndex, shuffle, repeat, volume, currentTime, duration,
+      currentSong, isPlaying, queue, queueIndex, shuffle, repeat, volume, currentTime, duration, preferNativeAudio,
       allSongs, loading, likedSongIds, playlists, recentlyPlayed,
       settings, updateSettings,
       sleepTimerEnd, setSleepTimer, clearSleepTimer,

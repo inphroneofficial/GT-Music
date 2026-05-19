@@ -17,7 +17,7 @@ export function NowPlayingBar() {
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume, currentTime, duration, seek,
+    volume, setVolume, currentTime, duration, seek, preferNativeAudio,
     isLiked, toggleLike, setIsFullScreen, isQueueOpen, setIsQueueOpen,
     settings, updateSettings,
   } = useMusic();
@@ -192,7 +192,13 @@ export function NowPlayingBar() {
                   <ListMusic className={`w-4 h-4 transition-colors ${isQueueOpen ? 'text-primary' : 'text-muted-foreground'}`} />
                 </Button>
                 <VolumeIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-20 cursor-pointer" />
+                {preferNativeAudio ? (
+                  <span className="w-20 text-right text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Device
+                  </span>
+                ) : (
+                  <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-20 cursor-pointer" />
+                )}
               </div>
             </div>
           </div>
