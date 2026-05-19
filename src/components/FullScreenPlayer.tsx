@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, Heart, ChevronDown, ListMusic, Settings
+  Volume2, Volume1, VolumeX, Heart, ChevronDown, ListMusic
 } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
 import { Equalizer } from '@/components/Equalizer';
@@ -66,9 +66,15 @@ export function FullScreenPlayer() {
         <div className="absolute w-24 h-24 rounded-full bg-primary/8 animate-bokeh" style={{ top: '60%', right: '15%', animationDelay: '3s' }} />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-5 pb-8 pt-safe md:px-8">
+      <div
+        className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center overflow-y-auto px-4 pb-8 md:px-8"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)' }}
+      >
         {/* Top bar */}
-        <div className="absolute left-0 right-0 top-4 flex items-center justify-between px-2 md:top-6">
+        <div
+          className="absolute left-0 right-0 flex items-center justify-between px-2 md:px-4"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+        >
           <Button
             variant="ghost" size="icon"
             className="h-10 w-10 rounded-full hover:bg-muted/30 btn-press"
@@ -89,14 +95,14 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Album art */}
-        <div className="relative mb-7 animate-fade-in-scale md:mb-10" style={{ animationDelay: '100ms' }}>
+        <div className="relative mb-6 mt-2 animate-fade-in-scale md:mb-10 md:mt-4" style={{ animationDelay: '100ms' }}>
           <div className={`absolute inset-0 -right-8 rounded-full bg-card vinyl-grooves ${isPlaying ? 'animate-vinyl-spin' : ''}`}
             style={{ width: '100%', height: '100%', borderRadius: '50%', zIndex: 0, transform: 'translateX(30px)' }}
           >
             <div className="absolute inset-0 rounded-full border-4 border-muted/30" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-muted" />
           </div>
-          <div className="relative z-10 h-[260px] w-[260px] overflow-hidden rounded-[2rem] shadow-2xl sm:h-[300px] sm:w-[300px] md:h-[340px] md:w-[340px]">
+          <div className="relative z-10 h-[220px] w-[220px] overflow-hidden rounded-[2rem] shadow-2xl min-[380px]:h-[240px] min-[380px]:w-[240px] sm:h-[300px] sm:w-[300px] md:h-[340px] md:w-[340px]">
             <img
               src={coverSrc}
               alt={currentSong.title}
@@ -111,7 +117,7 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Song info */}
-        <div className="mb-6 flex w-full items-center justify-between animate-fade-in md:mb-8" style={{ animationDelay: '200ms' }}>
+        <div className="mb-5 flex w-full items-center justify-between animate-fade-in md:mb-8" style={{ animationDelay: '200ms' }}>
           <div className="min-w-0 flex items-center gap-3">
             <div>
               <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">{currentSong.title}</h2>
@@ -125,7 +131,7 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Progress */}
-        <div className="w-full mb-5 md:mb-6 animate-fade-in" style={{ animationDelay: '300ms' }}>
+        <div className="mb-5 w-full animate-fade-in md:mb-6" style={{ animationDelay: '300ms' }}>
           <Slider value={[currentTime]} max={duration || 100} step={1} onValueChange={([v]) => seek(v)} className="cursor-pointer" />
           <div className="flex justify-between mt-2">
             <span className="text-[11px] text-muted-foreground tabular-nums">{formatTime(currentTime)}</span>
@@ -134,7 +140,7 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-4 animate-fade-in sm:gap-6 md:gap-8" style={{ animationDelay: '400ms' }}>
+        <div className="flex items-center gap-3 animate-fade-in sm:gap-6 md:gap-8" style={{ animationDelay: '400ms' }}>
           <Button variant="ghost" size="icon" className="rounded-full btn-press" onClick={toggleShuffle}>
             <Shuffle className={`w-5 h-5 transition-colors ${shuffle ? 'text-primary' : 'text-muted-foreground'}`} />
           </Button>
@@ -156,7 +162,7 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Speed + Volume */}
-        <div className="mt-8 flex w-full items-center justify-center gap-4 animate-fade-in md:mt-10" style={{ animationDelay: '500ms' }}>
+        <div className="mt-6 flex w-full items-center justify-center gap-4 animate-fade-in md:mt-10" style={{ animationDelay: '500ms' }}>
           {/* Speed */}
           <div className="relative">
             <button

@@ -8,11 +8,9 @@ const inflight = new Map<string, Promise<string>>();
 
 const PLACEHOLDER = '/placeholder.svg';
 
-function isExplicitCover(cover?: string): boolean {
-  if (!cover) return false;
-  const c = cover.toLowerCase();
-  if (c.includes('default') || c.includes('placeholder')) return false;
-  return true;
+function getCoverUrl(song: Song | null | undefined): string | null {
+  if (!song?.cover) return null;
+  return `/songs/${song.cover}`;
 }
 
 async function extractEmbeddedCover(fileUrl: string): Promise<string> {
@@ -41,7 +39,8 @@ export function useSongCoverState(song: Song | null | undefined): CoverResult {
   const initial = (() => {
     if (!song) return { src: PLACEHOLDER, loading: false, resolved: false };
     if (coverCache.has(song.id)) return { src: coverCache.get(song.id)!, loading: false, resolved: true };
-    if (isExplicitCover(song.cover)) return { src: `/songs/${song.cover}`, loading: false, resolved: true };
+    const explicitCover = getCoverUrl(song);
+    if (explicitCover) return { src: explicitCover, loading: false, resolved: true };
     return { src: PLACEHOLDER, loading: true, resolved: false };
   })();
 
@@ -51,8 +50,9 @@ export function useSongCoverState(song: Song | null | undefined): CoverResult {
     if (!song) { setState({ src: PLACEHOLDER, loading: false, resolved: false }); return; }
     const cached = coverCache.get(song.id);
     if (cached) { setState({ src: cached, loading: false, resolved: true }); return; }
-    if (isExplicitCover(song.cover)) {
-      const url = `/songs/${song.cover}`;
+    const explicitCover = getCoverUrl(song);
+    if (explicitCover) {
+      const url = explicitCover;
       coverCache.set(song.id, url);
       setState({ src: url, loading: false, resolved: true });
       return;
