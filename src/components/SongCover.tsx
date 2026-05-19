@@ -1,6 +1,6 @@
 import { useSongCoverState } from '@/hooks/useSongCover';
 import type { Song } from '@/types/music';
-import { ImgHTMLAttributes, useState } from 'react';
+import { ImgHTMLAttributes, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface Props extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
@@ -11,6 +11,10 @@ export function SongCover({ song, alt, loading = 'lazy', decoding = 'async', cla
   const { src, loading: extracting } = useSongCoverState(song);
   const [imgLoaded, setImgLoaded] = useState(false);
   const showSkeleton = extracting || !imgLoaded;
+
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [src]);
 
   return (
     <span className={cn('relative block', className)}>

@@ -47,7 +47,7 @@ export function NowPlayingBar() {
     <>
       {/* MOBILE mini-bar — visible below md */}
       <div
-        className="fixed bottom-16 left-2 right-2 z-50 md:hidden animate-slide-up sm:left-3 sm:right-3"
+        className="fixed bottom-16 left-2 right-2 z-50 touch-pan-y md:hidden animate-slide-up sm:left-3 sm:right-3"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         {...swipeHandlers}
       >
@@ -56,22 +56,27 @@ export function NowPlayingBar() {
           <div className="h-0.5 bg-muted/30 relative">
             <div className="absolute inset-y-0 left-0 btn-gradient" style={{ width: `${progress}%` }} />
           </div>
-          <div className="flex h-[62px] items-center gap-3 px-3.5">
-            <button onClick={() => setIsFullScreen(true)} className="flex-shrink-0 rounded-xl">
+          <div className="flex h-[66px] items-center gap-3 px-3.5">
+            <button onClick={() => setIsFullScreen(true)} className="tap-target touch-manipulation flex-shrink-0 rounded-xl" data-no-swipe="true">
               <SongCover
                 song={currentSong}
                 alt={currentSong.title}
                 className="w-10 h-10 rounded-lg object-cover"
               />
             </button>
-            <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setIsFullScreen(true)}>
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left touch-manipulation"
+              onClick={() => setIsFullScreen(true)}
+              data-no-swipe="true"
+            >
               <p className="truncate text-sm font-semibold text-foreground">{currentSong.title}</p>
               <p className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{currentSong.artist}</p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full btn-press" onClick={handleLike}>
+            </button>
+            <Button variant="ghost" size="icon" className="tap-target touch-manipulation h-10 w-10 rounded-full btn-press" onClick={handleLike}>
               <Heart className={`w-4 h-4 ${isLiked(currentSong.id) ? 'fill-primary text-primary' : 'text-muted-foreground'} ${heartAnim ? 'animate-heart-pop' : ''}`} />
             </Button>
-            <button onClick={togglePlay} className="flex h-10 w-10 items-center justify-center rounded-full btn-gradient shadow-lg btn-press">
+            <button onClick={togglePlay} className="tap-target touch-manipulation flex h-11 w-11 items-center justify-center rounded-full btn-gradient shadow-lg btn-press" data-no-swipe="true">
               {isPlaying ? <Pause className="w-4 h-4 text-primary-foreground" /> : <Play className="w-4 h-4 text-primary-foreground ml-0.5" />}
             </button>
           </div>

@@ -10,13 +10,33 @@ interface SwipeOptions {
 export function useSwipeGesture({ onSwipe, threshold = 50 }: SwipeOptions) {
   const startY = useRef(0);
   const startX = useRef(0);
+  const moved = useRef(false);
+  const startedOnInteractive = useRef(false);
+
+  const isInteractiveTarget = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest('button, a, input, textarea, select, [role="button"], [data-no-swipe="true"]'));
+  };
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
+    startedOnInteractive.current = isInteractiveTarget(e.target);
+    moved.current = false;
     startY.current = e.touches[0].clientY;
     startX.current = e.touches[0].clientX;
   }, []);
 
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - startY.current;
+    const dx = e.touches[0].clientX - startX.current;
+
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      moved.current = true;
+    }
+  }, []);
+
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (startedOnInteractive.current && !moved.current) return;
+
     const dy = e.changedTouches[0].clientY - startY.current;
     const dx = e.changedTouches[0].clientX - startX.current;
     const absX = Math.abs(dx);
@@ -29,5 +49,5 @@ export function useSwipeGesture({ onSwipe, threshold = 50 }: SwipeOptions) {
     }
   }, [onSwipe, threshold]);
 
-  return { onTouchStart, onTouchEnd };
+  return { onTouchStart, onTouchMove, onTouchEnd };
 }

@@ -350,6 +350,15 @@
   /* Minimum 44x44 tap target for mobile accessibility */
   .tap-target { min-width: 44px; min-height: 44px; }
 
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+
   .page-bottom-spacing {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
   }

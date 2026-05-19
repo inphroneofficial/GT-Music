@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, Heart, ChevronDown, ListMusic
+  Volume2, Volume1, VolumeX, Heart, ChevronDown, ListMusic, Settings2, RotateCcw, RotateCw, SlidersHorizontal
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMusic } from '@/contexts/MusicContext';
 import { Equalizer } from '@/components/Equalizer';
 import { SleepTimer } from '@/components/SleepTimer';
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { SPEED_OPTIONS } from '@/types/music';
 
 export function FullScreenPlayer() {
+  const navigate = useNavigate();
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
@@ -24,7 +26,6 @@ export function FullScreenPlayer() {
   } = useMusic();
 
   const [heartAnim, setHeartAnim] = useState(false);
-  const [showSpeed, setShowSpeed] = useState(false);
   const coverSrc = useSongCover(currentSong);
 
   const swipeHandlers = useSwipeGesture({
@@ -39,6 +40,7 @@ export function FullScreenPlayer() {
 
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const RepeatIcon = repeat === 'one' ? Repeat1 : Repeat;
+  const repeatLabel = repeat === 'off' ? 'Off' : repeat === 'all' ? 'All' : 'One';
 
   const handleLike = () => {
     setHeartAnim(true);
@@ -46,9 +48,13 @@ export function FullScreenPlayer() {
     setTimeout(() => setHeartAnim(false), 500);
   };
 
+  const seekBy = (delta: number) => {
+    seek(Math.max(0, Math.min(duration || 0, currentTime + delta)));
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col animate-fade-in-scale bg-background"
+      className="fixed inset-0 z-[100] flex flex-col bg-background animate-fade-in-scale"
       {...swipeHandlers}
     >
       {/* Background */}
@@ -77,16 +83,28 @@ export function FullScreenPlayer() {
         >
           <Button
             variant="ghost" size="icon"
-            className="h-10 w-10 rounded-full hover:bg-muted/30 btn-press"
+            className="tap-target touch-manipulation h-10 w-10 rounded-full hover:bg-muted/30 btn-press"
             onClick={() => setIsFullScreen(false)}
           >
             <ChevronDown className="w-6 h-6" />
           </Button>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="tap-target touch-manipulation h-10 w-10 rounded-full btn-press text-muted-foreground"
+              onClick={() => {
+                setIsFullScreen(false);
+                navigate('/settings');
+              }}
+              aria-label="Open settings"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
             <SleepTimer />
             <Button
               variant="ghost" size="icon"
-              className="h-8 w-8 rounded-full btn-press text-muted-foreground"
+              className="tap-target touch-manipulation h-10 w-10 rounded-full btn-press text-muted-foreground"
               onClick={() => setIsQueueOpen(!isQueueOpen)}
             >
               <ListMusic className="w-4 h-4" />
@@ -122,6 +140,7 @@ export function FullScreenPlayer() {
             <div>
               <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">{currentSong.title}</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{currentSong.artist}</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">{currentSong.album}</p>
             </div>
             {isPlaying && <Equalizer playing={isPlaying} size="md" />}
           </div>
@@ -140,56 +159,100 @@ export function FullScreenPlayer() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-3 animate-fade-in sm:gap-6 md:gap-8" style={{ animationDelay: '400ms' }}>
-          <Button variant="ghost" size="icon" className="rounded-full btn-press" onClick={toggleShuffle}>
+        <div className="flex items-center gap-2 animate-fade-in sm:gap-6 md:gap-8" style={{ animationDelay: '400ms' }}>
+          <Button variant="ghost" size="icon" className="tap-target touch-manipulation rounded-full btn-press" onClick={toggleShuffle}>
             <Shuffle className={`w-5 h-5 transition-colors ${shuffle ? 'text-primary' : 'text-muted-foreground'}`} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full btn-press" onClick={prevTrack}>
+          <Button variant="ghost" size="icon" className="tap-target touch-manipulation h-12 w-12 rounded-full btn-press" onClick={prevTrack}>
             <SkipBack className="w-6 h-6 fill-foreground text-foreground" />
           </Button>
           <button
             onClick={togglePlay}
-            className="w-16 h-16 rounded-full btn-gradient flex items-center justify-center hover:scale-110 active:scale-90 transition-transform shadow-xl glow-amber animate-glow-pulse btn-press"
+            className="touch-manipulation flex h-16 w-16 items-center justify-center rounded-full btn-gradient shadow-xl transition-transform btn-press glow-amber animate-glow-pulse hover:scale-110 active:scale-90"
+            data-no-swipe="true"
           >
             {isPlaying ? <Pause className="w-7 h-7 text-primary-foreground" /> : <Play className="w-7 h-7 text-primary-foreground ml-1" />}
           </button>
-          <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full btn-press" onClick={nextTrack}>
+          <Button variant="ghost" size="icon" className="tap-target touch-manipulation h-12 w-12 rounded-full btn-press" onClick={nextTrack}>
             <SkipForward className="w-6 h-6 fill-foreground text-foreground" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full btn-press" onClick={toggleRepeat}>
+          <Button variant="ghost" size="icon" className="tap-target touch-manipulation rounded-full btn-press" onClick={toggleRepeat}>
             <RepeatIcon className={`w-5 h-5 transition-colors ${repeat !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} />
           </Button>
         </div>
 
-        {/* Speed + Volume */}
-        <div className="mt-6 flex w-full items-center justify-center gap-4 animate-fade-in md:mt-10" style={{ animationDelay: '500ms' }}>
-          {/* Speed */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSpeed(!showSpeed)}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${settings.playbackSpeed !== 1 ? 'text-primary' : 'text-muted-foreground'}`}
+        <div className="mt-6 grid w-full gap-3 animate-fade-in md:mt-10" style={{ animationDelay: '500ms' }}>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border/40 bg-card/40 p-2 backdrop-blur-xl sm:grid-cols-4">
+            <Button variant="ghost" className="touch-manipulation h-12 rounded-xl text-xs text-muted-foreground hover:text-foreground" onClick={() => seekBy(-10)}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              -10s
+            </Button>
+            <Button variant="ghost" className="touch-manipulation h-12 rounded-xl text-xs text-muted-foreground hover:text-foreground" onClick={() => seekBy(10)}>
+              <RotateCw className="mr-2 h-4 w-4" />
+              +10s
+            </Button>
+            <Button
+              variant="ghost"
+              className="touch-manipulation h-12 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setIsQueueOpen(!isQueueOpen)}
             >
-              {settings.playbackSpeed}x
-            </button>
-            {showSpeed && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-xl p-2 shadow-2xl animate-scale-in">
-                {SPEED_OPTIONS.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => { updateSettings({ playbackSpeed: s }); setShowSpeed(false); }}
-                    className={`block w-full text-center px-4 py-1.5 rounded-lg text-xs font-medium ${
-                      settings.playbackSpeed === s ? 'text-primary bg-primary/10' : 'text-foreground hover:bg-card'
-                    }`}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-            )}
+              <ListMusic className={`mr-2 h-4 w-4 ${isQueueOpen ? 'text-primary' : ''}`} />
+              Queue
+            </Button>
+            <Button
+              variant="ghost"
+              className="touch-manipulation h-12 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setIsFullScreen(false);
+                navigate('/settings');
+              }}
+            >
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Sound
+            </Button>
           </div>
 
-          <VolumeIcon className="w-4 h-4 text-muted-foreground" />
-          <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-28 md:w-36 cursor-pointer" />
+          <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span>Volume</span>
+              <span>{Math.round(volume * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                className="tap-target touch-manipulation flex h-11 w-11 items-center justify-center rounded-full bg-background/50 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+                data-no-swipe="true"
+              >
+                <VolumeIcon className="h-4 w-4" />
+              </button>
+              <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="flex-1 cursor-pointer" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span>Playback</span>
+              <span>{repeatLabel}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SPEED_OPTIONS.map((speed) => (
+                <button
+                  key={speed}
+                    onClick={() => {
+                      updateSettings({ playbackSpeed: speed });
+                    }}
+                  className={`touch-manipulation rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors ${
+                    settings.playbackSpeed === speed
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'bg-background/50 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

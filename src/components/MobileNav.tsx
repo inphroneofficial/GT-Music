@@ -33,7 +33,7 @@ export function MobileNav() {
                     navigate(path);
                   }
                 }}
-                className={`flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-2 py-2 transition-all duration-200 btn-press ${
+                className={`tap-target touch-manipulation flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-2 py-2 transition-all duration-200 btn-press ${
                   isActive ? 'bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.1)]' : 'text-muted-foreground'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
