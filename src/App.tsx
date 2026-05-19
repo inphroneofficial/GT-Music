@@ -38,12 +38,12 @@ const AppLayout = () => {
   return (
     <SidebarProvider>
       {!splashDone && <SplashScreen onComplete={handleSplashComplete} />}
-      <div className={`min-h-screen flex w-full transition-opacity duration-500 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`flex min-h-[100dvh] w-full transition-opacity duration-500 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
         {/* Sidebar hidden on mobile via CSS */}
         <div className="hidden md:block">
           <AppSidebar />
         </div>
-        <div className="flex-1 flex flex-col min-h-screen overflow-hidden bg-background">
+        <div className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden bg-background">
           <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-border/40 bg-background/75 px-4 backdrop-blur-xl md:flex lg:px-6 pt-safe">
             <div className="flex w-full items-center justify-between gap-4">
               <SidebarTrigger className="tap-target rounded-full text-muted-foreground transition-colors hover:text-foreground">
@@ -57,7 +57,7 @@ const AppLayout = () => {
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-hidden pl-safe pr-safe pb-[8.75rem] md:pb-28">
+          <main className="flex-1 overflow-hidden pl-safe pr-safe pt-safe md:pt-0 pb-[8.75rem] md:pb-28">
             <AnimatedPage>
               <Routes>
                 <Route path="/" element={<Index />} />

@@ -102,6 +102,11 @@ function applyTheme(mode: 'dark' | 'light' | 'system') {
   if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', isLight ? 'light' : 'dark');
 }
 
+function shouldPreferNativeAudio() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -131,6 +136,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [preferNativeAudio] = useState(() => shouldPreferNativeAudio());
 
   // Apply accent on mount & change
   useEffect(() => { applyAccentColor(settings.accentColor); }, [settings.accentColor]);
@@ -163,6 +169,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audioRef.current.crossOrigin = 'anonymous';
       // Background playback: keep audio active even when tab hidden
       audioRef.current.setAttribute('playsinline', 'true');
+      audioRef.current.setAttribute('webkit-playsinline', 'true');
     }
     const audio = audioRef.current;
     const onTime = () => setCurrentTime(audio.currentTime);
@@ -188,7 +195,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Setup Web Audio nodes
   const ensureWebAudio = useCallback(() => {
-    if (audioCtxRef.current || !audioRef.current) return;
+    if (preferNativeAudio || audioCtxRef.current || !audioRef.current) return;
     try {
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
@@ -216,16 +223,20 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // Fallback
     }
-  }, []);
+  }, [preferNativeAudio]);
 
   // Apply EQ settings
   const applyEQSettings = useCallback((s: AppSettings) => {
+    if (preferNativeAudio) {
+      if (audioRef.current) audioRef.current.playbackRate = s.playbackSpeed;
+      return;
+    }
     const preset = EQ_PRESETS.find(p => p.name === s.eqPreset);
     const bands = s.eqPreset === 'custom' ? s.eqCustomBands : (preset?.bands || []);
     filtersRef.current.forEach((f, i) => { if (bands[i] !== undefined) f.gain.value = bands[i]; });
     if (gainRef.current) gainRef.current.gain.value = s.normalization ? 0.8 : 1;
     if (audioRef.current) audioRef.current.playbackRate = s.playbackSpeed;
-  }, []);
+  }, [preferNativeAudio]);
 
   // Re-apply settings when they change
   useEffect(() => { applyEQSettings(settings); }, [settings, applyEQSettings]);
@@ -260,12 +271,47 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         audioRef.current?.pause();
         setIsPlaying(false);
         setSleepTimerEnd(null);
-        toast.info('Sleep timer — playback paused');
+        toast.info('Sleep timer - playback paused');
       }
     };
     const id = setInterval(check, 1000);
     return () => clearInterval(id);
   }, [sleepTimerEnd]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const recoverPlayback = () => {
+      if (!currentSong || !isPlaying) return;
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      if (audio.paused) {
+        audio.play().catch(() => {});
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        window.setTimeout(recoverPlayback, 120);
+      }
+    };
+
+    const onForeground = () => {
+      window.setTimeout(recoverPlayback, 120);
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pageshow', onForeground);
+    window.addEventListener('focus', onForeground);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pageshow', onForeground);
+      window.removeEventListener('focus', onForeground);
+    };
+  }, [currentSong, isPlaying]);
 
   const addToRecent = useCallback((songId: string) => {
     setRecentlyPlayed(prev => {

@@ -7,6 +7,10 @@
     min-height: 100%;
   }
 
+  #root {
+    min-height: 100dvh;
+  }
+
   :root {
     /* GT Music — Obsidian + Amber design system */
     --background: 240 10% 4%;
