@@ -1,6 +1,23 @@
-import { useMemo } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shuffle, Plus, Play, ChevronRight } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronRight,
+  CloudLightning,
+  CloudMoon,
+  CloudRain,
+  CloudSun,
+  Clock3,
+  Headphones,
+  MapPin,
+  Play,
+  Plus,
+  Quote,
+  RefreshCcw,
+  Shuffle,
+  Sparkles,
+  Wind,
+} from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,50 +26,98 @@ import { Equalizer } from '@/components/Equalizer';
 import { SongContextMenu } from '@/components/SongContextMenu';
 import { SongCover } from '@/components/SongCover';
 import { SEO } from '@/components/SEO';
+import { TypingText } from '@/components/TypingText';
+import { useHomeAmbient } from '@/hooks/useHomeAmbient';
 import type { Song } from '@/types/music';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 6) return { lead: 'Late night', tail: 'vibes' };
-  if (h < 12) return { lead: 'Good', tail: 'morning' };
-  if (h < 17) return { lead: 'Good', tail: 'afternoon' };
-  if (h < 21) return { lead: 'Good', tail: 'evening' };
-  return { lead: 'Night', tail: 'owl' };
+function getWeatherIcon(mood: 'clear' | 'clouds' | 'rain' | 'storm' | 'mist' | 'snow' | 'unknown', isDay: boolean) {
+  if (mood === 'storm') return CloudLightning;
+  if (mood === 'rain' || mood === 'snow') return CloudRain;
+  if (mood === 'clear' && !isDay) return CloudMoon;
+  return CloudSun;
 }
 
-function getSubtext() {
-  const h = new Date().getHours();
-  if (h < 6) return 'Slow tempos and ambient textures for the small hours.';
-  if (h < 12) return 'Immersive soundscapes to begin your day in motion.';
-  if (h < 17) return 'Keep the momentum - handpicked sets for the afternoon.';
-  if (h < 21) return 'Wind down with the records you keep coming back to.';
-  return 'Let the night unfold one track at a time.';
+function getMoodTags(ambientMode: string, weatherMood?: string) {
+  if (weatherMood === 'storm') return ['revenge', 'soundtrack', 'indie', 'mavandaa'];
+  if (weatherMood === 'rain') return ['malli', 'indie', 'raaga', 'pavazha'];
+  if (ambientMode === 'dawn') return ['aasa', 'ada', 'bhel', 'acoustic'];
+  if (ambientMode === 'sunset') return ['kacheri', 'naari', 'malli', 'love'];
+  if (ambientMode === 'night') return ['revenge', 'oru', 'pavazha', 'soundtrack'];
+  return ['kacheri', 'poor', 'naari', 'tamil'];
+}
+
+function scoreSongForMoment(song: Song, ambientMode: string, weatherMood?: string) {
+  const haystack = `${song.title} ${song.artist} ${song.album} ${song.genre ?? ''}`.toLowerCase();
+  const tags = getMoodTags(ambientMode, weatherMood);
+  let score = 0;
+
+  tags.forEach((tag, index) => {
+    if (haystack.includes(tag)) score += 7 - index;
+  });
+
+  if (weatherMood === 'storm' && song.genre?.toLowerCase().includes('soundtrack')) score += 4;
+  if (weatherMood === 'rain' && song.genre?.toLowerCase().includes('indie')) score += 4;
+  if (ambientMode === 'day' && song.duration < 240) score += 2;
+  if (ambientMode === 'night' && song.duration > 230) score += 2;
+
+  return score;
+}
+
+function getMomentTitle(ambientMode: string, weatherLabel?: string) {
+  if (ambientMode === 'storm') return 'Storm Mode Picks';
+  if (ambientMode === 'dawn') return 'Morning Reset';
+  if (ambientMode === 'sunset') return 'Sunset Rotation';
+  if (ambientMode === 'night') return 'After-Hours Queue';
+  return weatherLabel ? `Built for ${weatherLabel}` : 'Play for This Moment';
 }
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { allSongs, recentlyPlayed, playSong, currentSong, isPlaying, togglePlay, loading } = useMusic();
+  const { now, weather, quote, ambientMode, greeting, subtitle, loadingWeather, refreshQuote } = useHomeAmbient();
+  const deferredSongs = useDeferredValue(allSongs);
 
   const recentSongs = useMemo(
-    () => recentlyPlayed.map((id) => allSongs.find((s) => s.id === id)).filter(Boolean) as Song[],
-    [recentlyPlayed, allSongs]
+    () => recentlyPlayed.map((id) => deferredSongs.find((song) => song.id === id)).filter(Boolean) as Song[],
+    [recentlyPlayed, deferredSongs]
   );
 
   const albums = useMemo(() => {
     const map = new Map<string, { name: string; artist: string; cover: string; songs: Song[] }>();
-    allSongs.forEach((s) => {
-      if (!map.has(s.album)) map.set(s.album, { name: s.album, artist: s.artist, cover: `/songs/${s.cover}`, songs: [] });
-      map.get(s.album)!.songs.push(s);
+    deferredSongs.forEach((song) => {
+      if (!map.has(song.album)) {
+        map.set(song.album, { name: song.album, artist: song.artist, cover: `/songs/${song.cover}`, songs: [] });
+      }
+      map.get(song.album)?.songs.push(song);
     });
     return Array.from(map.values());
-  }, [allSongs]);
+  }, [deferredSongs]);
 
-  const featured = allSongs[0];
-  const topSongs = allSongs.slice(0, 5);
+  const featured = deferredSongs[0];
+  const topSongs = deferredSongs.slice(0, 5);
   const quickPicks = albums.slice(0, 3);
 
-  const greeting = getGreeting();
-  const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const weatherIcon = useMemo(
+    () => getWeatherIcon(weather?.mood ?? 'unknown', weather?.isDay ?? true),
+    [weather?.isDay, weather?.mood]
+  );
+
+  const weatherDrivenSongs = useMemo(() => {
+    return [...deferredSongs]
+      .sort((a, b) => scoreSongForMoment(b, ambientMode, weather?.mood) - scoreSongForMoment(a, ambientMode, weather?.mood))
+      .slice(0, 4);
+  }, [ambientMode, deferredSongs, weather?.mood]);
+
+  const dateLabel = useMemo(
+    () => now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+    [now]
+  );
+  const timeLabel = useMemo(
+    () => now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    [now]
+  );
+  const momentTitle = useMemo(() => getMomentTitle(ambientMode, weather?.label), [ambientMode, weather?.label]);
+  const WeatherIcon = weatherIcon;
 
   if (loading) {
     return (
@@ -60,10 +125,10 @@ const HomePage = () => {
         <div className="p-4 pb-32 md:p-12">
           <SkeletonHero />
           <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => <SkeletonQuickPick key={i} delay={i * 60} />)}
+            {Array.from({ length: 3 }).map((_, index) => <SkeletonQuickPick key={index} delay={index * 60} />)}
           </div>
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} delay={i * 80} />)}
+            {Array.from({ length: 5 }).map((_, index) => <SkeletonCard key={index} delay={index * 80} />)}
           </div>
         </div>
       </ScrollArea>
@@ -74,75 +139,283 @@ const HomePage = () => {
     <ScrollArea className="h-full">
       <SEO
         title="Home"
-        description="Welcome to GT Music - your personal, ad-free music universe. Stream your library anywhere."
+        description="Welcome to GT Music - weather-aware playlists, premium playback, and your library in one place."
         path="/"
       />
+
       <div className="relative overflow-hidden">
         <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full ambient-blob-amber" />
         <div className="pointer-events-none absolute top-[40%] -right-48 h-[500px] w-[500px] rounded-full ambient-blob-violet" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 h-[420px] w-[420px] rounded-full ambient-blob-rose" />
         <div className="pointer-events-none absolute inset-0 grain-overlay opacity-[0.04]" />
+        <div className="pointer-events-none absolute inset-x-[10%] top-0 h-48 rounded-full hero-spotlight opacity-80" />
 
-        <div className="relative z-10 mx-auto max-w-7xl space-y-16 px-5 pb-36 pt-6 md:space-y-24 md:px-10 md:pt-10 lg:px-14">
-          <section className="flex flex-col items-start gap-10 lg:flex-row lg:items-end lg:gap-12">
-            <div className="flex-1 space-y-6 md:space-y-8">
-              <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary animate-fade-in">
-                <span className="h-px w-12 bg-primary" />
-                {dateLabel}
-              </div>
-              <h1 className="font-serif text-6xl leading-[0.85] tracking-tight text-foreground animate-fade-in sm:text-7xl md:text-[8rem] lg:text-[10rem]" style={{ animationDelay: '80ms' }}>
-                {greeting.lead}
-                <br />
-                <span className="ml-3 italic text-gradient-warm sm:ml-6 md:ml-16">{greeting.tail}</span>
-              </h1>
-              <p className="max-w-md text-base font-light leading-relaxed text-muted-foreground animate-fade-in md:text-xl" style={{ animationDelay: '160ms' }}>
-                {getSubtext()}
-              </p>
-              <div className="flex flex-wrap items-center gap-3 animate-fade-in md:gap-4" style={{ animationDelay: '240ms' }}>
-                <Button
-                  onClick={() => {
-                    const shuffled = [...allSongs].sort(() => Math.random() - 0.5);
-                    if (shuffled[0]) playSong(shuffled[0], shuffled);
-                  }}
-                  className="h-12 gap-3 rounded-full border-0 bg-primary px-7 font-bold text-primary-foreground shadow-[0_0_50px_-10px_hsl(var(--primary)/0.6)] btn-press hover:bg-primary/90 md:h-14 md:px-10"
-                >
-                  <Shuffle className="h-4 w-4 md:h-5 md:w-5" />
-                  Shuffle Play
-                </Button>
-                <button
-                  onClick={() => navigate('/library')}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border border-border/60 transition-colors btn-press hover:bg-card/60 md:h-14 md:w-14"
-                  aria-label="Open library"
-                >
-                  <Plus className="h-5 w-5 md:h-6 md:w-6" />
-                </button>
+        <div className="relative z-10 mx-auto max-w-7xl space-y-12 px-4 pb-36 pt-4 md:space-y-20 md:px-10 md:pt-10 lg:px-14">
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.28fr_0.92fr] lg:gap-8">
+            <div className="relative overflow-hidden rounded-[2.25rem] border border-border/40 bg-card/55 p-5 shadow-2xl glass-strong animate-fade-in-scale md:rounded-[2.75rem] md:p-8 lg:p-10">
+              <div className={`pointer-events-none absolute inset-0 premium-hero-${ambientMode}`} />
+              <div className="pointer-events-none absolute -right-14 top-6 h-44 w-44 rounded-full bg-primary/20 blur-3xl float-slow" />
+              <div className="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-white/10 blur-2xl float-slower" />
+              <div className="pointer-events-none absolute inset-[1px] rounded-[2.15rem] border border-white/10 md:rounded-[2.65rem]" />
+
+              <div className="relative space-y-5">
+                <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary md:text-xs">
+                  <span className="h-px w-8 bg-primary md:w-10" />
+                  <span>{greeting}</span>
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary/90 shadow-[0_10px_30px_-20px_hsl(var(--primary)/0.7)]">
+                    {dateLabel}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <TypingText
+                    phrases={[
+                      'Welcome to GT Music',
+                      'Your soundtrack for right now',
+                      weather ? `Now tuned for ${weather.label.toLowerCase()}` : 'Always ready to play',
+                    ]}
+                    className="block min-h-[3rem] max-w-3xl font-serif text-[2.75rem] leading-[0.96] tracking-tight text-foreground sm:min-h-[4rem] sm:text-5xl md:min-h-[5rem] md:text-6xl lg:text-7xl"
+                  />
+                  <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
+                    {subtitle}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-[1.65rem] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)] backdrop-blur-xl">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/90">
+                      <Clock3 className="h-4 w-4" />
+                      Time
+                    </div>
+                    <div className="text-2xl font-semibold text-foreground sm:text-3xl">{timeLabel}</div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">In sync with your current listening hour.</p>
+                  </div>
+
+                  <div className="rounded-[1.65rem] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)] backdrop-blur-xl">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/90">
+                      <WeatherIcon className="h-4 w-4" />
+                      Weather
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="text-2xl font-semibold text-foreground sm:text-3xl">
+                        {loadingWeather ? '--' : `${weather?.temperature ?? '--'}°`}
+                      </div>
+                      <div className="pb-1 text-xs text-muted-foreground">{weather?.label ?? 'Local'}</div>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{weather?.locationLabel ?? 'Studio Forecast'}</p>
+                  </div>
+
+                  <div className="rounded-[1.65rem] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)] backdrop-blur-xl">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/90">
+                      <Sparkles className="h-4 w-4" />
+                      Mode
+                    </div>
+                    <div className="text-lg font-semibold capitalize text-foreground sm:text-xl">{ambientMode}</div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">The app shifts tone and suggestions around the moment.</p>
+                  </div>
+
+                  <button
+                    onClick={refreshQuote}
+                    className="group rounded-[1.65rem] border border-white/10 bg-white/5 p-4 text-left shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)] backdrop-blur-xl transition-colors hover:bg-white/10"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/90">
+                      <span className="inline-flex items-center gap-2">
+                        <Quote className="h-4 w-4" />
+                        Quote
+                      </span>
+                      <RefreshCcw className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
+                    </div>
+                    <p className="line-clamp-3 text-sm leading-6 text-foreground">"{quote.text}"</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{quote.author}</p>
+                  </button>
+                </div>
+
+                <div className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/10 backdrop-blur-xl">
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-white/10 px-4 py-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Featured Release</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Jump back in with a quick one-tap play.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      <Headphones className="h-3.5 w-3.5" />
+                      Premium
+                    </span>
+                  </div>
+                  {featured && (
+                    <button
+                      onClick={() => playSong(featured, deferredSongs)}
+                      className="group grid w-full grid-cols-[84px_1fr_auto] items-center gap-3 p-4 text-left transition-colors hover:bg-white/5 sm:grid-cols-[96px_1fr_auto]"
+                    >
+                      <div className="relative h-20 w-20 overflow-hidden rounded-2xl shadow-xl sm:h-24 sm:w-24">
+                        <SongCover
+                          song={featured}
+                          alt={featured.title}
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="truncate font-serif text-2xl italic text-foreground sm:text-3xl">{featured.title}</h3>
+                        <p className="truncate text-sm text-muted-foreground">{featured.artist}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">{featured.album}</span>
+                          {featured.genre && <span>{featured.genre}</span>}
+                        </div>
+                      </div>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_16px_30px_-14px_hsl(var(--primary)/0.8)] transition-transform group-hover:scale-105">
+                        <Play className="ml-0.5 h-5 w-5 fill-current" />
+                      </div>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <Button
+                    onClick={() => {
+                      const shuffled = [...deferredSongs].sort(() => Math.random() - 0.5);
+                      if (shuffled[0]) playSong(shuffled[0], shuffled);
+                    }}
+                    className="h-12 gap-3 rounded-full border-0 bg-primary px-7 font-bold text-primary-foreground shadow-[0_0_50px_-10px_hsl(var(--primary)/0.6)] btn-press hover:bg-primary/90 md:h-14 md:px-10"
+                  >
+                    <Shuffle className="h-4 w-4 md:h-5 md:w-5" />
+                    Shuffle Play
+                  </Button>
+                  <button
+                    onClick={() => navigate('/library')}
+                    className="flex h-12 items-center gap-2 rounded-full border border-border/60 px-5 transition-colors btn-press hover:bg-card/60 md:h-14 md:px-6"
+                    aria-label="Open library"
+                  >
+                    <Plus className="h-5 w-5" />
+                    Open Library
+                  </button>
+                </div>
               </div>
             </div>
 
-            {featured && (
-              <div className="group relative w-full animate-fade-in-scale lg:w-[420px]" style={{ animationDelay: '320ms' }}>
-                <div className="absolute -inset-4 rounded-[3rem] bg-primary/15 blur-2xl opacity-60 transition-opacity duration-700 group-hover:opacity-100" />
-                <button
-                  onClick={() => playSong(featured, allSongs)}
-                  className="relative aspect-[4/5] w-full overflow-hidden rounded-[2.5rem] border border-border/60 bg-card text-left shadow-2xl btn-press"
-                >
-                  <SongCover
-                    song={featured}
-                    alt={featured.title}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                  <div className="absolute right-6 top-6 flex h-12 w-12 translate-y-2 items-center justify-center rounded-full glass opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                    <Play className="ml-0.5 h-5 w-5 fill-primary text-primary" />
+            <div className="grid grid-cols-1 gap-4">
+              <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                      <WeatherIcon className="h-4 w-4" />
+                      Weather Blend
+                    </div>
+                    <h3 className="text-2xl font-semibold text-foreground">
+                      {loadingWeather ? 'Loading weather...' : `${weather?.temperature ?? '--'}°C`}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{weather?.label ?? 'Checking the forecast for your next play.'}</p>
                   </div>
-                  <div className="absolute bottom-7 left-7 right-7">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-primary">Featured Release</p>
-                    <h3 className="mb-1 font-serif text-3xl italic text-white md:text-4xl">{featured.title}</h3>
-                    <p className="text-sm text-zinc-400">{featured.artist}</p>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-right">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Feels like</p>
+                    <p className="text-lg font-semibold text-foreground">{weather?.apparentTemperature ?? '--'}°</p>
                   </div>
-                </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {weather?.locationLabel ?? 'Local'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
+                    <Wind className="h-3.5 w-3.5" />
+                    {weather?.windSpeed ?? '--'} km/h
+                  </span>
+                </div>
               </div>
-            )}
+
+              <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                      <Quote className="h-4 w-4" />
+                      Quote Blend
+                    </div>
+                    <p className="text-base leading-7 text-foreground">"{quote.text}"</p>
+                  </div>
+                  <button
+                    onClick={refreshQuote}
+                    className="tap-target touch-manipulation inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/50 transition-colors hover:bg-card/80"
+                    aria-label="Refresh quote"
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-sm text-muted-foreground">{quote.author}</p>
+                <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+                  {quote.source === 'api' ? 'Live inspiration' : 'Curated fallback'}
+                </p>
+              </div>
+
+              <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                      <CalendarDays className="h-4 w-4" />
+                      Today
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">{dateLabel}</h3>
+                  </div>
+                  <span className="rounded-full border border-border/50 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                    {timeLabel}
+                  </span>
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  A clean listening space built for this hour, this weather, and your current mood.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="flex items-center gap-4 md:gap-8">
+              <h2 className="font-serif text-3xl italic text-foreground md:text-5xl">{momentTitle}</h2>
+              <div className="h-px flex-1 bg-border/60" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {weatherDrivenSongs.map((song, index) => {
+                const isActive = currentSong?.id === song.id;
+                return (
+                  <SongContextMenu key={song.id} song={song}>
+                    <button
+                      onClick={() => {
+                        if (isActive) togglePlay();
+                        else playSong(song, weatherDrivenSongs);
+                      }}
+                      className="group relative overflow-hidden rounded-[2rem] border border-border/40 bg-card/70 p-4 text-left glass transition-all hover:-translate-y-1 hover:bg-card md:p-5"
+                      style={{ animationDelay: `${index * 90}ms` }}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl">
+                          <SongCover
+                            song={song}
+                            alt={song.title}
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          {isActive && (
+                            <div className="absolute inset-x-2 bottom-2 flex items-center justify-center rounded-full glass py-1">
+                              <Equalizer playing={isPlaying} size="sm" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/90">
+                            {weather?.mood === 'rain' ? 'Rain fit' : ambientMode === 'night' ? 'Night fit' : 'Picked for now'}
+                          </p>
+                          <h3 className="mt-2 truncate text-lg font-semibold text-foreground">{song.title}</h3>
+                          <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            {(song.genre ?? 'Local library')} • {Math.floor(song.duration / 60)}:{String(song.duration % 60).padStart(2, '0')}
+                          </p>
+                        </div>
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-105">
+                          <Play className="ml-0.5 h-4 w-4 fill-current" />
+                        </div>
+                      </div>
+                    </button>
+                  </SongContextMenu>
+                );
+              })}
+            </div>
           </section>
 
           {quickPicks.length > 0 && (
@@ -154,7 +427,7 @@ const HomePage = () => {
                 >
                   <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full ambient-blob-violet opacity-60" />
                   <div className="relative z-10 h-28 w-28 flex-shrink-0 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10 md:h-40 md:w-40">
-                    <img src={quickPicks[0].cover} alt={quickPicks[0].name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+                    <img src={quickPicks[0].cover} alt={quickPicks[0].name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }} />
                   </div>
                   <div className="relative z-10 min-w-0">
                     <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary">Recent</span>
@@ -163,16 +436,16 @@ const HomePage = () => {
                   </div>
                 </button>
               )}
-              {quickPicks.slice(1, 3).map((album, i) => (
+              {quickPicks.slice(1, 3).map((album, index) => (
                 <button
                   key={album.name}
                   onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
                   className="group relative flex h-56 flex-col justify-between rounded-[2rem] border border-border/40 p-6 text-left transition-all glass hover:bg-card/70 animate-fade-in-scale md:h-64 md:rounded-[2.5rem] md:p-8"
-                  style={{ animationDelay: `${(i + 1) * 80}ms` }}
+                  style={{ animationDelay: `${(index + 1) * 80}ms` }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="h-14 w-14 overflow-hidden rounded-xl border border-border/40 ring-1 ring-white/5 md:h-16 md:w-16">
-                      <img src={album.cover} alt={album.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+                      <img src={album.cover} alt={album.name} className="h-full w-full object-cover" onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }} />
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground transition-all group-hover:translate-x-1 group-hover:text-primary" />
                   </div>
@@ -194,14 +467,14 @@ const HomePage = () => {
               </button>
             </div>
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-              {topSongs.map((song, i) => {
+              {topSongs.map((song, index) => {
                 const isActive = currentSong?.id === song.id;
                 return (
                   <SongContextMenu key={song.id} song={song}>
                     <div
                       onClick={() => { if (isActive) togglePlay(); else playSong(song, topSongs); }}
                       className="group cursor-pointer animate-fade-in-scale"
-                      style={{ animationDelay: `${i * 70}ms` }}
+                      style={{ animationDelay: `${index * 70}ms` }}
                     >
                       <div className="relative mb-3 aspect-square overflow-hidden rounded-2xl border border-border/40 bg-card shadow-xl md:mb-5 md:rounded-3xl">
                         <SongCover
@@ -236,14 +509,14 @@ const HomePage = () => {
                 <div className="h-px flex-1 bg-border/60" />
               </div>
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-                {recentSongs.slice(0, 5).map((song, i) => {
+                {recentSongs.slice(0, 5).map((song, index) => {
                   const isActive = currentSong?.id === song.id;
                   return (
                     <SongContextMenu key={song.id} song={song}>
                       <div
                         onClick={() => { if (isActive) togglePlay(); else playSong(song, recentSongs); }}
                         className="group cursor-pointer animate-fade-in-scale"
-                        style={{ animationDelay: `${i * 70}ms` }}
+                        style={{ animationDelay: `${index * 70}ms` }}
                       >
                         <div className="relative mb-3 aspect-square overflow-hidden rounded-2xl border border-border/40 bg-card shadow-xl md:mb-5 md:rounded-3xl">
                           <SongCover song={song} alt={song.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -271,19 +544,19 @@ const HomePage = () => {
               </span>
             </div>
             <div className="space-y-1.5">
-              {albums.map((album, i) => (
+              {albums.map((album, index) => (
                 <button
                   key={album.name}
                   onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
                   className="group grid w-full grid-cols-12 items-center rounded-2xl border border-transparent px-4 py-4 text-left transition-all hover:border-border/50 hover:bg-card/40 animate-fade-in md:rounded-[2rem] md:px-10 md:py-6"
-                  style={{ animationDelay: `${i * 40}ms` }}
+                  style={{ animationDelay: `${index * 40}ms` }}
                 >
                   <div className="col-span-1 hidden font-mono text-xs text-muted-foreground/40 transition-colors group-hover:text-primary md:block">
-                    {String(i + 1).padStart(2, '0')}/
+                    {String(index + 1).padStart(2, '0')}/
                   </div>
                   <div className="col-span-9 flex min-w-0 items-center gap-4 md:col-span-6 md:gap-6">
                     <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-card ring-1 ring-border/40 md:h-14 md:w-14 md:rounded-2xl">
-                      <img src={album.cover} alt={album.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+                      <img src={album.cover} alt={album.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }} />
                     </div>
                     <div className="min-w-0">
                       <h5 className="truncate text-base font-medium tracking-tight md:text-xl">{album.name}</h5>
@@ -295,8 +568,8 @@ const HomePage = () => {
                     <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 lg:inline">Album</span>
                     <span
                       role="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         const first = album.songs[0];
                         if (first) playSong(first, album.songs);
                       }}

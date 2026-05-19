@@ -105,7 +105,7 @@ function applyTheme(mode: 'dark' | 'light' | 'system') {
 
 function shouldPreferNativeAudio() {
   if (typeof navigator === 'undefined') return false;
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
