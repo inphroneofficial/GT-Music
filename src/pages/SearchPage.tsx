@@ -8,6 +8,7 @@ import { AlbumCard } from '@/components/MusicCards';
 import { SEO } from '@/components/SEO';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { resolveSongCoverPath } from '@/lib/songMetadata';
 
 type Filter = 'all' | 'songs' | 'artists' | 'albums';
 
@@ -57,7 +58,7 @@ const SearchPage = () => {
     const map = new Map<string, { name: string; artist: string; cover: string }>();
     allSongs.forEach(s => {
       if (s.album.toLowerCase().includes(q) && !map.has(s.album)) {
-        map.set(s.album, { name: s.album, artist: s.artist, cover: `/songs/${s.cover}` });
+        map.set(s.album, { name: s.album, artist: s.artist, cover: resolveSongCoverPath(s.cover) });
       }
     });
     return Array.from(map.values());

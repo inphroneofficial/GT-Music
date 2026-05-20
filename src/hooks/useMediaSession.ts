@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { Song } from '@/types/music';
+import { resolveSongCoverPath } from '@/lib/songMetadata';
 
 interface Args {
   song: Song | null;
@@ -22,12 +23,13 @@ interface Args {
 export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay, onPause, onNext, onPrev, onSeek }: Args) {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !song) return;
+    const artworkSrc = resolveSongCoverPath(song.cover);
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
       artist: song.artist,
       album: song.album,
       artwork: [
-        { src: `/songs/${song.cover}`, sizes: '512x512', type: 'image/jpeg' },
+        { src: artworkSrc, sizes: '512x512', type: artworkSrc.startsWith('data:image/png') ? 'image/png' : 'image/jpeg' },
         { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
         { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       ],

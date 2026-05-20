@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
   CalendarDays,
   ChevronRight,
   CloudLightning,
@@ -9,6 +10,7 @@ import {
   CloudSun,
   Clock3,
   Headphones,
+  Flame,
   MapPin,
   Play,
   Plus,
@@ -16,6 +18,7 @@ import {
   RefreshCcw,
   Shuffle,
   Sparkles,
+  TrendingUp,
   Wind,
 } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
@@ -28,6 +31,7 @@ import { SongCover } from '@/components/SongCover';
 import { SEO } from '@/components/SEO';
 import { TypingText } from '@/components/TypingText';
 import { useHomeAmbient } from '@/hooks/useHomeAmbient';
+import { resolveSongCoverPath } from '@/lib/songMetadata';
 import type { Song } from '@/types/music';
 
 function getWeatherIcon(mood: 'clear' | 'clouds' | 'rain' | 'storm' | 'mist' | 'snow' | 'unknown', isDay: boolean) {
@@ -73,7 +77,7 @@ function getMomentTitle(ambientMode: string, weatherLabel?: string) {
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { allSongs, recentlyPlayed, playSong, currentSong, isPlaying, togglePlay, loading } = useMusic();
+  const { allSongs, recentlyPlayed, playlists, playSong, currentSong, isPlaying, togglePlay, loading, playCounts, playHistory } = useMusic();
   const { now, weather, quote, ambientMode, greeting, subtitle, loadingWeather, refreshQuote } = useHomeAmbient();
   const deferredSongs = useDeferredValue(allSongs);
 
@@ -86,7 +90,7 @@ const HomePage = () => {
     const map = new Map<string, { name: string; artist: string; cover: string; songs: Song[] }>();
     deferredSongs.forEach((song) => {
       if (!map.has(song.album)) {
-        map.set(song.album, { name: song.album, artist: song.artist, cover: `/songs/${song.cover}`, songs: [] });
+        map.set(song.album, { name: song.album, artist: song.artist, cover: resolveSongCoverPath(song.cover), songs: [] });
       }
       map.get(song.album)?.songs.push(song);
     });
@@ -94,7 +98,6 @@ const HomePage = () => {
   }, [deferredSongs]);
 
   const featured = deferredSongs[0];
-  const topSongs = deferredSongs.slice(0, 5);
   const quickPicks = albums.slice(0, 3);
 
   const weatherIcon = useMemo(
@@ -107,6 +110,37 @@ const HomePage = () => {
       .sort((a, b) => scoreSongForMoment(b, ambientMode, weather?.mood) - scoreSongForMoment(a, ambientMode, weather?.mood))
       .slice(0, 4);
   }, [ambientMode, deferredSongs, weather?.mood]);
+
+  const mostPlayedSongs = useMemo(() => {
+    const sorted = [...deferredSongs]
+      .sort((a, b) => (playCounts[b.id] || 0) - (playCounts[a.id] || 0));
+    const withRealPlays = sorted.filter((song) => (playCounts[song.id] || 0) > 0);
+    return (withRealPlays.length > 0 ? withRealPlays : sorted).slice(0, 5);
+  }, [deferredSongs, playCounts]);
+
+  const listeningInsights = useMemo(() => {
+    const totalPlays = Object.values(playCounts).reduce((sum, count) => sum + count, 0);
+    const artistCounts = new Map<string, number>();
+    deferredSongs.forEach((song) => {
+      artistCounts.set(song.artist, (artistCounts.get(song.artist) || 0) + (playCounts[song.id] || 0));
+    });
+    const topArtist = Array.from(artistCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+
+    const hourCounts = new Map<number, number>();
+    playHistory.forEach((entry) => {
+      const hour = new Date(entry.playedAt).getHours();
+      hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
+    });
+    const peakHour = Array.from(hourCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      totalPlays,
+      topArtist: topArtist?.[0] ?? 'Still warming up',
+      topArtistPlays: topArtist?.[1] ?? 0,
+      peakHour: typeof peakHour?.[0] === 'number' ? `${String(peakHour[0]).padStart(2, '0')}:00` : 'Anytime',
+      activeDays: new Set(playHistory.map((entry) => new Date(entry.playedAt).toDateString())).size,
+    };
+  }, [deferredSongs, playCounts, playHistory]);
 
   const dateLabel = useMemo(
     () => now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
@@ -294,31 +328,71 @@ const HomePage = () => {
 
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
-                <div className="mb-4 flex items-start justify-between gap-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      <WeatherIcon className="h-4 w-4" />
-                      Weather Blend
+                      <BarChart3 className="h-4 w-4" />
+                      Listening Analysis
                     </div>
-                    <h3 className="text-2xl font-semibold text-foreground">
-                      {loadingWeather ? 'Loading weather...' : `${weather?.temperature ?? '--'}°C`}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{weather?.label ?? 'Checking the forecast for your next play.'}</p>
+                    <h3 className="text-xl font-semibold text-foreground">{listeningInsights.totalPlays} tracked plays</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Your app now tracks repeat habits, peak hours, and favorites.</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-right">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Feels like</p>
-                    <p className="text-lg font-semibold text-foreground">{weather?.apparentTemperature ?? '--'}°</p>
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-primary">
+                    Real usage
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Top artist</p>
+                    <p className="mt-2 truncate text-base font-semibold text-foreground">{listeningInsights.topArtist}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{listeningInsights.topArtistPlays} plays</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Peak hour</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{listeningInsights.peakHour}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">When you return most often</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Active days</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{listeningInsights.activeDays}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Days with tracked listening</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {weather?.locationLabel ?? 'Local'}
+              </div>
+
+              <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                      <CalendarDays className="h-4 w-4" />
+                      Session Pulse
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">{dateLabel}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Made for {ambientMode} energy and quick re-entry into your library.</p>
+                  </div>
+                  <span className="rounded-full border border-border/50 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                    {timeLabel}
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
-                    <Wind className="h-3.5 w-3.5" />
-                    {weather?.windSpeed ?? '--'} km/h
-                  </span>
+                </div>
+                <div className="space-y-3">
+                  {(recentSongs.length > 0 ? recentSongs : weatherDrivenSongs).slice(0, 3).map((song, index) => (
+                    <button
+                      key={song.id}
+                      onClick={() => playSong(song, recentSongs.length > 0 ? recentSongs : weatherDrivenSongs)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    >
+                      <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl">
+                        <SongCover song={song} alt={song.title} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">{song.title}</p>
+                        <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {index === 0 ? 'Next' : 'Queue'}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -326,8 +400,8 @@ const HomePage = () => {
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      <Quote className="h-4 w-4" />
-                      Quote Blend
+                      <TrendingUp className="h-4 w-4" />
+                      Library Snapshot
                     </div>
                     <p className="text-base leading-7 text-foreground">"{quote.text}"</p>
                   </div>
@@ -339,28 +413,21 @@ const HomePage = () => {
                     <RefreshCcw className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="text-sm text-muted-foreground">{quote.author}</p>
-                <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
-                  {quote.source === 'api' ? 'Live inspiration' : 'Curated fallback'}
-                </p>
-              </div>
-
-              <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      <CalendarDays className="h-4 w-4" />
-                      Today
-                    </div>
-                    <h3 className="text-xl font-semibold text-foreground">{dateLabel}</h3>
-                  </div>
-                  <span className="rounded-full border border-border/50 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {timeLabel}
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
+                    <Flame className="h-3.5 w-3.5" />
+                    {allSongs.length} songs
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
+                    <Headphones className="h-3.5 w-3.5" />
+                    {albums.length} albums
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {playlists.length} playlists
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  A clean listening space built for this hour, this weather, and your current mood.
-                </p>
+                <p className="mt-3 text-xs text-muted-foreground">{quote.author}</p>
               </div>
             </div>
           </section>
@@ -460,19 +527,19 @@ const HomePage = () => {
 
           <section className="space-y-6 md:space-y-8">
             <div className="flex items-center gap-4 md:gap-8">
-              <h2 className="font-serif text-3xl italic text-foreground md:text-5xl">Your Top Songs</h2>
+              <h2 className="font-serif text-3xl italic text-foreground md:text-5xl">Most Played</h2>
               <div className="h-px flex-1 bg-border/60" />
               <button className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground sm:block md:text-xs">
-                Discover More
+                Based on your history
               </button>
             </div>
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-              {topSongs.map((song, index) => {
+              {mostPlayedSongs.map((song, index) => {
                 const isActive = currentSong?.id === song.id;
                 return (
                   <SongContextMenu key={song.id} song={song}>
                     <div
-                      onClick={() => { if (isActive) togglePlay(); else playSong(song, topSongs); }}
+                      onClick={() => { if (isActive) togglePlay(); else playSong(song, mostPlayedSongs); }}
                       className="group cursor-pointer animate-fade-in-scale"
                       style={{ animationDelay: `${index * 70}ms` }}
                     >
@@ -495,6 +562,7 @@ const HomePage = () => {
                       </div>
                       <h4 className="mb-0.5 truncate text-sm font-bold transition-colors group-hover:text-primary md:mb-1 md:text-base">{song.title}</h4>
                       <p className="truncate text-xs font-medium text-muted-foreground md:text-sm">{song.artist}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-primary/80">{playCounts[song.id] || 0} plays</p>
                     </div>
                   </SongContextMenu>
                 );

@@ -15,7 +15,6 @@ import { AnimatedPage } from "@/components/AnimatedPage";
 import { MobileNav } from "@/components/MobileNav";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Menu } from "lucide-react";
 
 import Index from "./pages/Index";
@@ -49,12 +48,9 @@ const AppLayout = () => {
               <SidebarTrigger className="tap-target rounded-full text-muted-foreground transition-colors hover:text-foreground">
                 <Menu className="w-5 h-5" />
               </SidebarTrigger>
-              <div className="flex items-center gap-3">
-                <p className="hidden text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground lg:block">
-                  Personal music universe
-                </p>
-                <ThemeToggle />
-              </div>
+              <p className="hidden text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground lg:block">
+                Personal music universe
+              </p>
             </div>
           </header>
           <main className="flex-1 overflow-hidden pl-safe pr-safe pt-safe md:pt-0 pb-[8.75rem] md:pb-28">

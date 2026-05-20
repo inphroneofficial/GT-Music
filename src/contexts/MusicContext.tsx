@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback, useEffect, useRef, useSt
 import type { Song, Playlist, RepeatMode, AppSettings, EQPresetName } from '@/types/music';
 import { DEFAULT_SETTINGS, EQ_PRESETS, ACCENT_COLORS } from '@/types/music';
 import { useMediaSession } from '@/hooks/useMediaSession';
+import { hasCustomCover, readSongFileMetadata, resolveSongFilePath, SONG_PLACEHOLDER_COVER } from '@/lib/songMetadata';
 import { toast } from 'sonner';
 
 interface MusicContextType {
@@ -20,6 +21,8 @@ interface MusicContextType {
   likedSongIds: string[];
   playlists: Playlist[];
   recentlyPlayed: string[];
+  playCounts: Record<string, number>;
+  playHistory: Array<{ songId: string; playedAt: number }>;
 
   // Settings
   settings: AppSettings;
@@ -108,12 +111,31 @@ function shouldPreferNativeAudio() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+function applyMetadataToSong(song: Song, metadata: { title?: string; artist?: string; album?: string; coverUrl?: string }): Song {
+  return {
+    ...song,
+    title: metadata.title || song.title,
+    artist: metadata.artist || song.artist,
+    album: metadata.album || song.album,
+    cover: metadata.coverUrl && metadata.coverUrl !== SONG_PLACEHOLDER_COVER
+      ? metadata.coverUrl
+      : hasCustomCover(song.cover)
+        ? song.cover
+        : SONG_PLACEHOLDER_COVER,
+  };
+}
+
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
-  const gainRef = useRef<GainNode | null>(null);
+  const bassFilterRef = useRef<BiquadFilterNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const stereoGainRef = useRef<GainNode | null>(null);
+  const monoGainRef = useRef<GainNode | null>(null);
+  const transitionGainRef = useRef<GainNode | null>(null);
+  const outputGainRef = useRef<GainNode | null>(null);
 
   const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +153,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [likedSongIds, setLikedSongIds] = useState<string[]>(() => loadFromStorage('gt-liked', []));
   const [playlists, setPlaylists] = useState<Playlist[]>(() => loadFromStorage('gt-playlists', []));
   const [recentlyPlayed, setRecentlyPlayed] = useState<string[]>(() => loadFromStorage('gt-recent', []));
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>(() => loadFromStorage('gt-play-counts', {}));
+  const [playHistory, setPlayHistory] = useState<Array<{ songId: string; playedAt: number }>>(() => loadFromStorage('gt-play-history', []));
 
   const [settings, setSettings] = useState<AppSettings>(() => loadFromStorage('gt-settings', DEFAULT_SETTINGS));
   const [sleepTimerEnd, setSleepTimerEnd] = useState<number | null>(null);
@@ -155,9 +179,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Fetch manifest
   useEffect(() => {
-    fetch('/songs/manifest.json')
-      .then(r => r.json())
-      .then(data => { setAllSongs(data.songs); setLoading(false); })
+    Promise.allSettled([
+      fetch('/songs/manifest.json').then((response) => response.json()),
+      fetch('/Melodies/manifest.json').then((response) => response.ok ? response.json() : { songs: [] }),
+    ])
+      .then(async ([songsResult, melodiesResult]) => {
+        const manifestSongs = songsResult.status === 'fulfilled' ? songsResult.value.songs ?? [] : [];
+        const melodiesSongs = melodiesResult.status === 'fulfilled' ? melodiesResult.value.songs ?? [] : [];
+        const mergedSongs: Song[] = [...manifestSongs, ...melodiesSongs];
+        setAllSongs(mergedSongs);
+        setLoading(false);
+
+        const enrichedSongs = await Promise.all(
+          mergedSongs.map(async (song) => {
+            const metadata = await readSongFileMetadata(resolveSongFilePath(song.file));
+            return applyMetadataToSong(song, metadata);
+          })
+        );
+
+        setAllSongs(enrichedSongs);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -214,17 +255,78 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       filtersRef.current = filters;
 
-      const gain = ctx.createGain();
-      gainRef.current = gain;
+      const bassFilter = ctx.createBiquadFilter();
+      bassFilter.type = 'lowshelf';
+      bassFilter.frequency.value = 180;
+      bassFilter.Q.value = 0.8;
+      bassFilter.gain.value = 0;
+      bassFilterRef.current = bassFilter;
+
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = 0;
+      compressor.knee.value = 0;
+      compressor.ratio.value = 1;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+      compressorRef.current = compressor;
+
+      const stereoGain = ctx.createGain();
+      stereoGain.gain.value = 1;
+      stereoGainRef.current = stereoGain;
+
+      const splitter = ctx.createChannelSplitter(2);
+      const monoBus = ctx.createGain();
+      monoBus.gain.value = 0.5;
+      const merger = ctx.createChannelMerger(2);
+      const monoGain = ctx.createGain();
+      monoGain.gain.value = 0;
+      monoGainRef.current = monoGain;
+
+      const transitionGain = ctx.createGain();
+      transitionGain.gain.value = 1;
+      transitionGainRef.current = transitionGain;
+
+      const outputGain = ctx.createGain();
+      outputGain.gain.value = volume;
+      outputGainRef.current = outputGain;
 
       source.connect(filters[0]);
       for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
-      filters[filters.length - 1].connect(gain);
-      gain.connect(ctx.destination);
+      filters[filters.length - 1].connect(bassFilter);
+      bassFilter.connect(compressor);
+      compressor.connect(stereoGain);
+      stereoGain.connect(transitionGain);
+
+      compressor.connect(splitter);
+      splitter.connect(monoBus, 0);
+      splitter.connect(monoBus, 1);
+      monoBus.connect(merger, 0, 0);
+      monoBus.connect(merger, 0, 1);
+      merger.connect(monoGain);
+      monoGain.connect(transitionGain);
+
+      transitionGain.connect(outputGain);
+      outputGain.connect(ctx.destination);
+
+      audioRef.current.volume = 1;
+
+      const preset = EQ_PRESETS.find((entry) => entry.name === settings.eqPreset);
+      const bands = settings.eqPreset === 'custom' ? settings.eqCustomBands : (preset?.bands || []);
+      filters.forEach((filter, index) => {
+        if (bands[index] !== undefined) filter.gain.value = bands[index];
+      });
+      bassFilter.gain.value = settings.bassBoost * 1.8;
+      stereoGain.gain.value = settings.monoAudio ? 0 : 1;
+      monoGain.gain.value = settings.monoAudio ? 1 : 0;
+      compressor.threshold.value = settings.normalization ? -24 : 0;
+      compressor.knee.value = settings.normalization ? 24 : 0;
+      compressor.ratio.value = settings.normalization ? 3.2 : 1;
+      compressor.attack.value = settings.normalization ? 0.01 : 0.003;
+      compressor.release.value = settings.normalization ? 0.22 : 0.25;
     } catch {
       // Fallback
     }
-  }, [preferNativeAudio]);
+  }, [preferNativeAudio, settings, volume]);
 
   // Apply EQ settings
   const applyEQSettings = useCallback((s: AppSettings) => {
@@ -235,9 +337,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const preset = EQ_PRESETS.find(p => p.name === s.eqPreset);
     const bands = s.eqPreset === 'custom' ? s.eqCustomBands : (preset?.bands || []);
     filtersRef.current.forEach((f, i) => { if (bands[i] !== undefined) f.gain.value = bands[i]; });
-    if (gainRef.current) gainRef.current.gain.value = s.normalization ? 0.8 : 1;
+    if (bassFilterRef.current) bassFilterRef.current.gain.value = s.bassBoost * 1.8;
+    if (stereoGainRef.current) stereoGainRef.current.gain.value = s.monoAudio ? 0 : 1;
+    if (monoGainRef.current) monoGainRef.current.gain.value = s.monoAudio ? 1 : 0;
+    if (compressorRef.current) {
+      compressorRef.current.threshold.value = s.normalization ? -24 : 0;
+      compressorRef.current.knee.value = s.normalization ? 24 : 0;
+      compressorRef.current.ratio.value = s.normalization ? 3.2 : 1;
+      compressorRef.current.attack.value = s.normalization ? 0.01 : 0.003;
+      compressorRef.current.release.value = s.normalization ? 0.22 : 0.25;
+    }
+    if (outputGainRef.current) outputGainRef.current.gain.value = volume;
     if (audioRef.current) audioRef.current.playbackRate = s.playbackSpeed;
-  }, [preferNativeAudio]);
+  }, [preferNativeAudio, volume]);
 
   // Re-apply settings when they change
   useEffect(() => { applyEQSettings(settings); }, [settings, applyEQSettings]);
@@ -247,6 +359,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { localStorage.setItem('gt-liked', JSON.stringify(likedSongIds)); }, [likedSongIds]);
   useEffect(() => { localStorage.setItem('gt-playlists', JSON.stringify(playlists)); }, [playlists]);
   useEffect(() => { localStorage.setItem('gt-recent', JSON.stringify(recentlyPlayed)); }, [recentlyPlayed]);
+  useEffect(() => { localStorage.setItem('gt-play-counts', JSON.stringify(playCounts)); }, [playCounts]);
+  useEffect(() => { localStorage.setItem('gt-play-history', JSON.stringify(playHistory)); }, [playHistory]);
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...partial }));
@@ -321,20 +435,72 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
-  const playSong = useCallback((song: Song, context?: Song[]) => {
+  const trackPlay = useCallback((songId: string) => {
+    setPlayCounts((prev) => ({ ...prev, [songId]: (prev[songId] || 0) + 1 }));
+    setPlayHistory((prev) => [{ songId, playedAt: Date.now() }, ...prev].slice(0, 300));
+  }, []);
+
+  const rampTransitionGain = useCallback((target: number, durationMs: number) => {
+    const ctx = audioCtxRef.current;
+    const gain = transitionGainRef.current;
+    if (!ctx || !gain || durationMs <= 0) return Promise.resolve();
+
+    const nowAt = ctx.currentTime;
+    gain.gain.cancelScheduledValues(nowAt);
+    gain.gain.setValueAtTime(gain.gain.value, nowAt);
+    gain.gain.linearRampToValueAtTime(target, nowAt + durationMs / 1000);
+
+    return new Promise<void>((resolve) => {
+      window.setTimeout(resolve, durationMs + 20);
+    });
+  }, []);
+
+  const startSongPlayback = useCallback((song: Song) => {
     const audio = audioRef.current!;
+    setCurrentSong(song);
+    audio.src = resolveSongFilePath(song.file);
+    audio.playbackRate = settings.playbackSpeed;
+    readSongFileMetadata(resolveSongFilePath(song.file)).then((metadata) => {
+      setCurrentSong((current) => {
+        if (!current || current.id !== song.id) return current;
+        return applyMetadataToSong(current, metadata);
+      });
+      setQueue((currentQueue) => currentQueue.map((entry) => entry.id === song.id ? applyMetadataToSong(entry, metadata) : entry));
+      setAllSongs((currentSongs) => currentSongs.map((entry) => entry.id === song.id ? applyMetadataToSong(entry, metadata) : entry));
+    });
+    return audio.play().then(() => {
+      setIsPlaying(true);
+      trackPlay(song.id);
+    }).catch(() => {});
+  }, [settings.playbackSpeed, trackPlay]);
+
+  const transitionToSong = useCallback(async (song: Song) => {
+    const fadeMs = Math.min(settings.crossfadeDuration * 180, 900);
+    const shouldFade = !preferNativeAudio && !!audioCtxRef.current && !!transitionGainRef.current && !!currentSong && fadeMs > 0;
+
+    if (shouldFade) {
+      await rampTransitionGain(0, fadeMs);
+      await startSongPlayback(song);
+      await rampTransitionGain(1, fadeMs);
+      return;
+    }
+
+    if (!preferNativeAudio && transitionGainRef.current) {
+      transitionGainRef.current.gain.value = 1;
+    }
+    await startSongPlayback(song);
+  }, [currentSong, preferNativeAudio, rampTransitionGain, settings.crossfadeDuration, startSongPlayback]);
+
+  const playSong = useCallback((song: Song, context?: Song[]) => {
     ensureWebAudio();
     if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
     if (context) {
       setQueue(context);
       setQueueIndex(context.findIndex(s => s.id === song.id));
     }
-    setCurrentSong(song);
-    audio.src = `/songs/${song.file}`;
-    audio.playbackRate = settings.playbackSpeed;
-    audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    transitionToSong(song);
     addToRecent(song.id);
-  }, [addToRecent, ensureWebAudio, settings.playbackSpeed]);
+  }, [addToRecent, ensureWebAudio, transitionToSong]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current!;
@@ -368,13 +534,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const next = queue[nextIdx];
     if (next) {
       setQueueIndex(nextIdx);
-      setCurrentSong(next);
-      audioRef.current!.src = `/songs/${next.file}`;
-      audioRef.current!.playbackRate = settings.playbackSpeed;
-      audioRef.current!.play().then(() => setIsPlaying(true)).catch(() => {});
+      transitionToSong(next);
       addToRecent(next.id);
     }
-  }, [repeat, queueIndex, queue, getNextIndex, addToRecent, settings.playbackSpeed]);
+  }, [repeat, queueIndex, queue, getNextIndex, addToRecent, transitionToSong]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -390,13 +553,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const next = queue[nextIdx];
     if (next) {
       setQueueIndex(nextIdx);
-      setCurrentSong(next);
-      audioRef.current!.src = `/songs/${next.file}`;
-      audioRef.current!.playbackRate = settings.playbackSpeed;
-      audioRef.current!.play().then(() => setIsPlaying(true)).catch(() => {});
+      transitionToSong(next);
       addToRecent(next.id);
     }
-  }, [queue, getNextIndex, addToRecent, settings.playbackSpeed]);
+  }, [queue, getNextIndex, addToRecent, transitionToSong]);
 
   const prevTrack = useCallback(() => {
     if (!audioRef.current) return;
@@ -408,13 +568,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const prev = queue[prevIdx];
     if (prev) {
       setQueueIndex(prevIdx);
-      setCurrentSong(prev);
-      audioRef.current.src = `/songs/${prev.file}`;
-      audioRef.current.playbackRate = settings.playbackSpeed;
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      transitionToSong(prev);
       addToRecent(prev.id);
     }
-  }, [queue, queueIndex, addToRecent, settings.playbackSpeed]);
+  }, [queue, queueIndex, addToRecent, transitionToSong]);
 
   const seek = useCallback((time: number) => {
     if (audioRef.current) audioRef.current.currentTime = time;
@@ -427,7 +584,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     setVolumeState(vol);
-    if (audioRef.current) audioRef.current.volume = vol;
+    if (outputGainRef.current) outputGainRef.current.gain.value = vol;
+    if (audioRef.current) audioRef.current.volume = 1;
   }, [preferNativeAudio]);
 
   const toggleShuffle = useCallback(() => setShuffle(p => !p), []);
@@ -554,7 +712,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'audio';
-    link.href = `/songs/${next.file}`;
+    link.href = resolveSongFilePath(next.file);
     document.head.appendChild(link);
     return () => { try { document.head.removeChild(link); } catch {} };
   }, [currentTime, duration, queue, queueIndex, currentSong, settings.gapless]);
@@ -562,7 +720,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <MusicContext.Provider value={{
       currentSong, isPlaying, queue, queueIndex, shuffle, repeat, volume, currentTime, duration, preferNativeAudio,
-      allSongs, loading, likedSongIds, playlists, recentlyPlayed,
+      allSongs, loading, likedSongIds, playlists, recentlyPlayed, playCounts, playHistory,
       settings, updateSettings,
       sleepTimerEnd, setSleepTimer, clearSleepTimer,
       playSong, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle, toggleRepeat,

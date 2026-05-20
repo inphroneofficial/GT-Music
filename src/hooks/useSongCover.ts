@@ -1,32 +1,21 @@
 import { useEffect, useState } from 'react';
-import jsmediatags from 'jsmediatags/dist/jsmediatags.min.js';
 import type { Song } from '@/types/music';
+import { hasCustomCover, readSongFileMetadata, resolveSongCoverPath, resolveSongFilePath, SONG_PLACEHOLDER_COVER } from '@/lib/songMetadata';
 
 // In-memory cache of resolved cover URLs keyed by song.id
 const coverCache = new Map<string, string>();
 const inflight = new Map<string, Promise<string>>();
 
-const PLACEHOLDER = '/placeholder.svg';
+const PLACEHOLDER = SONG_PLACEHOLDER_COVER;
 
 function getCoverUrl(song: Song | null | undefined): string | null {
-  if (!song?.cover) return null;
-  return `/songs/${song.cover}`;
+  if (!song?.cover || !hasCustomCover(song.cover)) return null;
+  return resolveSongCoverPath(song.cover);
 }
 
 async function extractEmbeddedCover(fileUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    (jsmediatags as any).read(fileUrl, {
-      onSuccess: (tag: any) => {
-        const pic = tag?.tags?.picture;
-        if (!pic) return reject(new Error('no picture'));
-        const { data, format } = pic;
-        const byteArray = new Uint8Array(data);
-        const blob = new Blob([byteArray], { type: format || 'image/jpeg' });
-        resolve(URL.createObjectURL(blob));
-      },
-      onError: (e: any) => reject(e),
-    });
-  });
+  const metadata = await readSongFileMetadata(fileUrl);
+  return metadata.coverUrl || PLACEHOLDER;
 }
 
 export interface CoverResult {
@@ -59,7 +48,7 @@ export function useSongCoverState(song: Song | null | undefined): CoverResult {
     }
 
     setState({ src: PLACEHOLDER, loading: true, resolved: false });
-    const fileUrl = `/songs/${song.file}`;
+    const fileUrl = resolveSongFilePath(song.file);
     let cancelled = false;
 
     const promise =

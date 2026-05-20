@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { resolveSongCoverPath } from '@/lib/songMetadata';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
@@ -27,7 +28,7 @@ const LibraryPage = () => {
   const albums = useMemo(() => {
     const map = new Map<string, { name: string; artist: string; cover: string }>();
     allSongs.forEach(s => {
-      if (!map.has(s.album)) map.set(s.album, { name: s.album, artist: s.artist, cover: `/songs/${s.cover}` });
+      if (!map.has(s.album)) map.set(s.album, { name: s.album, artist: s.artist, cover: resolveSongCoverPath(s.cover) });
     });
     return Array.from(map.values());
   }, [allSongs]);
@@ -35,7 +36,7 @@ const LibraryPage = () => {
   const artists = useMemo(() => {
     const map = new Map<string, { name: string; cover: string; songCount: number }>();
     allSongs.forEach(s => {
-      if (!map.has(s.artist)) map.set(s.artist, { name: s.artist, cover: `/songs/${s.cover}`, songCount: 0 });
+      if (!map.has(s.artist)) map.set(s.artist, { name: s.artist, cover: resolveSongCoverPath(s.cover), songCount: 0 });
       map.get(s.artist)!.songCount++;
     });
     return Array.from(map.values());

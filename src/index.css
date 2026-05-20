@@ -389,6 +389,15 @@
     animation: float-slower 14s ease-in-out infinite;
   }
 
+  .perspective-card {
+    perspective: 1400px;
+  }
+
+  .developer-photo-card {
+    transform: rotateX(10deg) rotateY(-8deg);
+    transform-style: preserve-3d;
+  }
+
   /* Safe-area utilities (iOS notch, Android gesture bar) */
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
