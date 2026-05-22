@@ -13,12 +13,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
-import { AlbumCard } from '@/components/MusicCards';
 import { VirtualizedSongList } from '@/components/VirtualizedSongList';
 import { SEO } from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { resolveSongCoverPath } from '@/lib/songMetadata';
 import {
   Dialog,
@@ -28,7 +26,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
-type LibrarySection = 'all' | 'albums' | 'artists' | 'liked' | 'playlists' | 'recent' | 'mostPlayed' | 'downloaded';
+type LibrarySection =
+  | 'all'
+  | 'albums'
+  | 'artists'
+  | 'liked'
+  | 'playlists'
+  | 'recent'
+  | 'mostPlayed'
+  | 'downloaded';
 
 const sections: Array<{
   value: LibrarySection;
@@ -107,14 +113,14 @@ const LibraryPage = () => {
   }, [allSongs]);
 
   const sectionMeta = useMemo(() => ({
-    all: { title: 'All Songs', detail: `${allSongs.length} tracks in your full library` },
-    albums: { title: 'Albums', detail: `${albums.length} album collections ready to browse` },
-    artists: { title: 'Artists', detail: `${artists.length} artists from your local catalog` },
+    all: { title: 'All Songs', detail: `${allSongs.length} tracks in your full music library` },
+    albums: { title: 'Albums', detail: `${albums.length} album collections from your songs` },
+    artists: { title: 'Artists', detail: `${artists.length} artists across your library` },
     liked: { title: 'Liked Songs', detail: `${likedSongs.length} songs you saved` },
-    playlists: { title: 'Playlists', detail: `${playlists.length} playlists you created` },
-    recent: { title: 'Recently Played', detail: `${recentlyPlayedSongs.length} songs from your latest sessions` },
+    playlists: { title: 'Playlists', detail: `${playlists.length} custom playlists` },
+    recent: { title: 'Recently Played', detail: `${recentlyPlayedSongs.length} songs from recent sessions` },
     mostPlayed: { title: 'Most Played', detail: `${mostPlayedSongs.length} tracks with real listening activity` },
-    downloaded: { title: 'Downloaded', detail: `${allSongs.length} local files available offline in GT Music` },
+    downloaded: { title: 'Downloaded', detail: `${allSongs.length} local tracks ready to play` },
   }), [albums.length, allSongs.length, artists.length, likedSongs.length, mostPlayedSongs.length, playlists.length, recentlyPlayedSongs.length]);
 
   const activeMeta = sectionMeta[activeSection];
@@ -127,13 +133,14 @@ const LibraryPage = () => {
   };
 
   return (
-    <ScrollArea className="h-full">
+    <div className="flex h-full flex-col overflow-hidden">
       <SEO title="Library" description="Browse every song, artist, album, and playlist inside GT Music." path="/library" />
-      <div className="mx-auto max-w-7xl px-4 pb-40 pt-4 md:px-6 md:pt-6">
+
+      <div className="flex-shrink-0 px-4 pt-4 md:px-6 md:pt-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">Your Library</h1>
-            <p className="mt-1 text-sm text-muted-foreground">One clean place for songs, albums, artists, and playlists.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Songs, albums, artists, and playlists in one polished space.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -169,7 +176,7 @@ const LibraryPage = () => {
         </div>
 
         <div className="-mx-4 mb-4 overflow-x-auto no-scrollbar px-4 md:mx-0 md:px-0">
-          <div className="flex w-max gap-2.5">
+          <div className="flex w-max gap-2.5 pb-1">
             {sections.map(({ value, label, shortLabel, icon: Icon, tone }) => {
               const active = activeSection === value;
               return (
@@ -177,9 +184,9 @@ const LibraryPage = () => {
                   key={value}
                   type="button"
                   onClick={() => setActiveSection(value)}
-                  className={`relative min-w-[138px] overflow-hidden rounded-[1.45rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press ${
+                  className={`relative min-w-[132px] overflow-hidden rounded-[1.35rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press ${
                     active
-                      ? 'border-primary/30 bg-card shadow-[0_18px_40px_-28px_hsl(var(--primary)/0.45)]'
+                      ? 'border-primary/30 bg-card shadow-[0_14px_30px_-24px_hsl(var(--primary)/0.45)]'
                       : 'border-border/30 bg-card/55 hover:bg-card/80'
                   }`}
                 >
@@ -197,30 +204,82 @@ const LibraryPage = () => {
           </div>
         </div>
 
-        <div className="mb-4 rounded-[1.5rem] border border-border/30 bg-card/55 px-4 py-3.5 shadow-[0_18px_50px_-35px_rgba(0,0,0,0.65)]">
+        <div className="mb-4 rounded-[1.35rem] border border-border/30 bg-card/55 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Now Browsing</p>
           <h2 className="pt-1 text-lg font-bold text-foreground">{activeMeta.title}</h2>
           <p className="pt-0.5 text-xs text-muted-foreground">{activeMeta.detail}</p>
         </div>
+      </div>
 
+      <div className="min-h-0 flex-1 px-4 pb-36 md:px-6">
         {activeSection === 'all' && (
-          <VirtualizedSongList songs={allSongs} maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]" />
+          <VirtualizedSongList
+            songs={allSongs}
+            maxHeightClassName="h-full min-h-0"
+            containerClassName="border-0 bg-transparent rounded-none"
+          />
+        )}
+
+        {activeSection === 'liked' && (
+          likedSongs.length === 0 ? (
+            <EmptyState icon={<Heart className="h-7 w-7 text-muted-foreground" />} title="No liked songs yet" detail="Tap the heart on any song to build this collection." />
+          ) : (
+            <VirtualizedSongList
+              songs={likedSongs}
+              maxHeightClassName="h-full min-h-0"
+              containerClassName="border-0 bg-transparent rounded-none"
+            />
+          )
+        )}
+
+        {activeSection === 'recent' && (
+          recentlyPlayedSongs.length === 0 ? (
+            <EmptyState icon={<TimerReset className="h-7 w-7 text-muted-foreground" />} title="No recent songs yet" detail="Start playing to build your listening history." />
+          ) : (
+            <VirtualizedSongList
+              songs={recentlyPlayedSongs}
+              maxHeightClassName="h-full min-h-0"
+              containerClassName="border-0 bg-transparent rounded-none"
+            />
+          )
+        )}
+
+        {activeSection === 'mostPlayed' && (
+          mostPlayedSongs.length === 0 ? (
+            <EmptyState icon={<TrendingUp className="h-7 w-7 text-muted-foreground" />} title="No top tracks yet" detail="Your most-played songs will show up here after a few sessions." />
+          ) : (
+            <VirtualizedSongList
+              songs={mostPlayedSongs}
+              maxHeightClassName="h-full min-h-0"
+              containerClassName="border-0 bg-transparent rounded-none"
+            />
+          )
+        )}
+
+        {activeSection === 'downloaded' && (
+          <VirtualizedSongList
+            songs={allSongs}
+            maxHeightClassName="h-full min-h-0"
+            containerClassName="border-0 bg-transparent rounded-none"
+          />
         )}
 
         {activeSection === 'albums' && (
           albums.length === 0 ? (
             <EmptyState icon={<Album className="h-7 w-7 text-muted-foreground" />} title="No albums yet" detail="Albums will appear here as songs are grouped." />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {albums.map((album) => (
-                <AlbumCard
-                  key={album.name}
-                  name={album.name}
-                  artist={album.artist}
-                  cover={album.cover}
-                  onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
-                />
-              ))}
+            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
+              <div className="flex w-max gap-3 pb-2">
+                {albums.map((album) => (
+                  <CompactMediaCard
+                    key={album.name}
+                    title={album.name}
+                    subtitle={album.artist}
+                    cover={album.cover}
+                    onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
+                  />
+                ))}
+              </div>
             </div>
           )
         )}
@@ -229,36 +288,20 @@ const LibraryPage = () => {
           artists.length === 0 ? (
             <EmptyState icon={<Mic2 className="h-7 w-7 text-muted-foreground" />} title="No artists yet" detail="Artists will appear here from your imported songs." />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {artists.map((artist) => (
-                <button
-                  key={artist.name}
-                  className="rounded-[1.5rem] border border-border/30 bg-card/55 p-3 text-left transition-colors hover:bg-card"
-                  onClick={() => navigate(`/artist/${encodeURIComponent(artist.name)}`)}
-                >
-                  <div className="mb-3 aspect-square overflow-hidden rounded-full bg-muted">
-                    <img
-                      src={artist.cover}
-                      alt={artist.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                      onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }}
-                    />
-                  </div>
-                  <p className="truncate text-sm font-semibold text-foreground">{artist.name}</p>
-                  <p className="text-xs text-muted-foreground">{artist.songCount} songs</p>
-                </button>
-              ))}
+            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
+              <div className="flex w-max gap-3 pb-2">
+                {artists.map((artist) => (
+                  <CompactMediaCard
+                    key={artist.name}
+                    title={artist.name}
+                    subtitle={`${artist.songCount} songs`}
+                    cover={artist.cover}
+                    circle
+                    onClick={() => navigate(`/artist/${encodeURIComponent(artist.name)}`)}
+                  />
+                ))}
+              </div>
             </div>
-          )
-        )}
-
-        {activeSection === 'liked' && (
-          likedSongs.length === 0 ? (
-            <EmptyState icon={<Heart className="h-7 w-7 text-muted-foreground" />} title="No liked songs yet" detail="Tap the heart on any song to build this collection." />
-          ) : (
-            <VirtualizedSongList songs={likedSongs} maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]" />
           )
         )}
 
@@ -266,56 +309,90 @@ const LibraryPage = () => {
           playlists.length === 0 ? (
             <EmptyState icon={<LibraryBig className="h-7 w-7 text-muted-foreground" />} title="No playlists yet" detail="Create a playlist to start organizing your library." />
           ) : (
-            <div className="space-y-2">
-              {playlists.map((playlist) => (
-                <button
-                  key={playlist.id}
-                  className="flex w-full items-center gap-4 rounded-[1.3rem] border border-border/25 bg-card/45 p-3 text-left transition-all hover:border-border/40 hover:bg-card"
-                  onClick={() => navigate(`/playlist/${playlist.id}`)}
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/30 bg-card">
-                    <ListMusic className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{playlist.name}</p>
-                    <p className="text-xs text-muted-foreground">{playlist.songIds.length} songs</p>
-                  </div>
-                </button>
-              ))}
+            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
+              <div className="flex w-max gap-3 pb-2">
+                {playlists.map((playlist) => (
+                  <CompactPlaylistCard
+                    key={playlist.id}
+                    name={playlist.name}
+                    count={playlist.songIds.length}
+                    onClick={() => navigate(`/playlist/${playlist.id}`)}
+                  />
+                ))}
+              </div>
             </div>
           )
         )}
-
-        {activeSection === 'recent' && (
-          recentlyPlayedSongs.length === 0 ? (
-            <EmptyState icon={<TimerReset className="h-7 w-7 text-muted-foreground" />} title="No recent songs yet" detail="Start playing to build your listening history." />
-          ) : (
-            <VirtualizedSongList songs={recentlyPlayedSongs} maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]" />
-          )
-        )}
-
-        {activeSection === 'mostPlayed' && (
-          mostPlayedSongs.length === 0 ? (
-            <EmptyState icon={<TrendingUp className="h-7 w-7 text-muted-foreground" />} title="No top tracks yet" detail="Your most-played songs will show up here after a few sessions." />
-          ) : (
-            <VirtualizedSongList songs={mostPlayedSongs} maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]" />
-          )
-        )}
-
-        {activeSection === 'downloaded' && (
-          <VirtualizedSongList songs={allSongs} maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]" />
-        )}
       </div>
-    </ScrollArea>
+    </div>
   );
 };
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-border/30 bg-card/50 px-3 py-2.5">
+    <div className="rounded-[1.1rem] border border-border/30 bg-card/50 px-3 py-2.5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">{label}</p>
       <p className="pt-1 text-base font-bold text-foreground">{value}</p>
     </div>
+  );
+}
+
+function CompactMediaCard({
+  title,
+  subtitle,
+  cover,
+  circle = false,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  cover: string;
+  circle?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-[138px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-2.5 text-left transition-colors hover:bg-card"
+    >
+      <div className={`mb-2.5 overflow-hidden bg-muted ${circle ? 'rounded-full' : 'rounded-[1rem]'}`}>
+        <img
+          src={cover}
+          alt={title}
+          loading="lazy"
+          decoding="async"
+          className="aspect-square w-full object-cover"
+          onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }}
+        />
+      </div>
+      <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+      <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+    </button>
+  );
+}
+
+function CompactPlaylistCard({
+  name,
+  count,
+  onClick,
+}: {
+  name: string;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-[150px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-3 text-left transition-colors hover:bg-card"
+    >
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[1rem] bg-primary/10 text-primary">
+        <ListMusic className="h-5 w-5" />
+      </div>
+      <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+      <p className="truncate text-xs text-muted-foreground">{count} songs</p>
+    </button>
   );
 }
 
@@ -329,7 +406,7 @@ function EmptyState({
   detail: string;
 }) {
   return (
-    <div className="flex min-h-[240px] flex-col items-center justify-center rounded-[1.6rem] border border-border/30 bg-card/40 px-6 text-center">
+    <div className="flex h-full min-h-[240px] flex-col items-center justify-center rounded-[1.6rem] border border-border/30 bg-card/40 px-6 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-card">
         {icon}
       </div>

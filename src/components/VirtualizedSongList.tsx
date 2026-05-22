@@ -8,6 +8,7 @@ interface VirtualizedSongListProps {
   showAlbum?: boolean;
   itemHeight?: number;
   maxHeightClassName?: string;
+  containerClassName?: string;
 }
 
 export function VirtualizedSongList({
@@ -16,6 +17,7 @@ export function VirtualizedSongList({
   showAlbum = true,
   itemHeight = 76,
   maxHeightClassName = 'max-h-[62vh]',
+  containerClassName = 'rounded-[1.75rem] border border-border/30 bg-card/40',
 }: VirtualizedSongListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -57,7 +59,7 @@ export function VirtualizedSongList({
   return (
     <div
       ref={containerRef}
-      className={`virtual-list-surface overflow-auto rounded-[1.75rem] border border-border/30 bg-card/40 ${maxHeightClassName}`}
+      className={`virtual-list-surface overflow-auto ${containerClassName} ${maxHeightClassName}`}
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
