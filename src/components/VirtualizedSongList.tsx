@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SongRow } from '@/components/SongRow';
 import type { Song } from '@/types/music';
 
@@ -17,9 +17,10 @@ export function VirtualizedSongList({
   itemHeight = 76,
   maxHeightClassName = 'max-h-[62vh]',
 }: VirtualizedSongListProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(620);
   const overscan = 6;
-  const viewportHeight = 620;
   const activeContext = context ?? songs;
   const totalHeight = songs.length * itemHeight;
   const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
@@ -33,8 +34,29 @@ export function VirtualizedSongList({
     [endIndex, songs, startIndex],
   );
 
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateHeight = () => {
+      setViewportHeight(element.clientHeight || 620);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    window.addEventListener('orientationchange', updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('orientationchange', updateHeight);
+    };
+  }, []);
+
   return (
     <div
+      ref={containerRef}
       className={`virtual-list-surface overflow-auto rounded-[1.75rem] border border-border/30 bg-card/40 ${maxHeightClassName}`}
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
     >
