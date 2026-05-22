@@ -211,11 +211,11 @@ const LibraryPage = () => {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 px-4 pb-36 md:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-36 md:px-6">
         {activeSection === 'all' && (
           <VirtualizedSongList
             songs={allSongs}
-            maxHeightClassName="h-full min-h-0"
+            maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
             containerClassName="border-0 bg-transparent rounded-none"
           />
         )}
@@ -226,7 +226,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={likedSongs}
-              maxHeightClassName="h-full min-h-0"
+              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
               containerClassName="border-0 bg-transparent rounded-none"
             />
           )
@@ -238,7 +238,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={recentlyPlayedSongs}
-              maxHeightClassName="h-full min-h-0"
+              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
               containerClassName="border-0 bg-transparent rounded-none"
             />
           )
@@ -250,7 +250,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={mostPlayedSongs}
-              maxHeightClassName="h-full min-h-0"
+              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
               containerClassName="border-0 bg-transparent rounded-none"
             />
           )
@@ -259,7 +259,7 @@ const LibraryPage = () => {
         {activeSection === 'downloaded' && (
           <VirtualizedSongList
             songs={allSongs}
-            maxHeightClassName="h-full min-h-0"
+            maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
             containerClassName="border-0 bg-transparent rounded-none"
           />
         )}
@@ -268,18 +268,16 @@ const LibraryPage = () => {
           albums.length === 0 ? (
             <EmptyState icon={<Album className="h-7 w-7 text-muted-foreground" />} title="No albums yet" detail="Albums will appear here as songs are grouped." />
           ) : (
-            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
-              <div className="flex w-max gap-3 pb-2">
-                {albums.map((album) => (
-                  <CompactMediaCard
-                    key={album.name}
-                    title={album.name}
-                    subtitle={album.artist}
-                    cover={album.cover}
-                    onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
-                  />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {albums.map((album) => (
+                <CompactMediaCard
+                  key={album.name}
+                  title={album.name}
+                  subtitle={album.artist}
+                  cover={album.cover}
+                  onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
+                />
+              ))}
             </div>
           )
         )}
@@ -288,19 +286,17 @@ const LibraryPage = () => {
           artists.length === 0 ? (
             <EmptyState icon={<Mic2 className="h-7 w-7 text-muted-foreground" />} title="No artists yet" detail="Artists will appear here from your imported songs." />
           ) : (
-            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
-              <div className="flex w-max gap-3 pb-2">
-                {artists.map((artist) => (
-                  <CompactMediaCard
-                    key={artist.name}
-                    title={artist.name}
-                    subtitle={`${artist.songCount} songs`}
-                    cover={artist.cover}
-                    circle
-                    onClick={() => navigate(`/artist/${encodeURIComponent(artist.name)}`)}
-                  />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {artists.map((artist) => (
+                <CompactMediaCard
+                  key={artist.name}
+                  title={artist.name}
+                  subtitle={`${artist.songCount} songs`}
+                  cover={artist.cover}
+                  circle
+                  onClick={() => navigate(`/artist/${encodeURIComponent(artist.name)}`)}
+                />
+              ))}
             </div>
           )
         )}
@@ -309,17 +305,15 @@ const LibraryPage = () => {
           playlists.length === 0 ? (
             <EmptyState icon={<LibraryBig className="h-7 w-7 text-muted-foreground" />} title="No playlists yet" detail="Create a playlist to start organizing your library." />
           ) : (
-            <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
-              <div className="flex w-max gap-3 pb-2">
-                {playlists.map((playlist) => (
-                  <CompactPlaylistCard
-                    key={playlist.id}
-                    name={playlist.name}
-                    count={playlist.songIds.length}
-                    onClick={() => navigate(`/playlist/${playlist.id}`)}
-                  />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {playlists.map((playlist) => (
+                <CompactPlaylistCard
+                  key={playlist.id}
+                  name={playlist.name}
+                  count={playlist.songIds.length}
+                  onClick={() => navigate(`/playlist/${playlist.id}`)}
+                />
+              ))}
             </div>
           )
         )}

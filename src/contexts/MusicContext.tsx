@@ -13,6 +13,7 @@ import {
   applyAudioSettings,
   createAudioEngine,
   fadeAudioEngine,
+  rampOutputVolume,
   resumeAudioEngine,
   setImmediateAudioLevel,
 } from '@/lib/audioEngine';
@@ -663,6 +664,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const engine = audioEngineRef.current;
     if (engine) {
       applyAudioSettings(engine, audio, settings, clamped);
+      rampOutputVolume(engine, clamped);
+      if (!audio.paused) {
+        resumeAudioEngine(engine).catch(() => {});
+      }
     } else {
       audio.volume = clamped;
     }

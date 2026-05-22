@@ -211,6 +211,14 @@ export function setImmediateAudioLevel(engine: AudioEngine, value: number) {
   engine.transitionGain.gain.setValueAtTime(value, nowAt);
 }
 
+export function rampOutputVolume(engine: AudioEngine, value: number, durationMs = 140) {
+  const nowAt = engine.ctx.currentTime;
+  const target = Math.min(Math.max(value, 0), 1);
+  engine.outputGain.gain.cancelScheduledValues(nowAt);
+  engine.outputGain.gain.setValueAtTime(engine.outputGain.gain.value, nowAt);
+  engine.outputGain.gain.linearRampToValueAtTime(target, nowAt + durationMs / 1000);
+}
+
 export function resumeAudioEngine(engine: AudioEngine | null) {
   if (!engine) return Promise.resolve();
   if (engine.ctx.state === 'suspended') {
