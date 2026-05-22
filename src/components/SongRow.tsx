@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Play, Pause, Heart } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
 import { Equalizer } from '@/components/Equalizer';
@@ -14,7 +14,7 @@ interface SongRowProps {
   showAlbum?: boolean;
 }
 
-export function SongRow({ song, index, context, showAlbum = true }: SongRowProps) {
+function SongRowComponent({ song, index, context, showAlbum = true }: SongRowProps) {
   const { playSong, currentSong, isPlaying, togglePlay, isLiked, toggleLike } = useMusic();
   const isActive = currentSong?.id === song.id;
   const [heartAnim, setHeartAnim] = useState(false);
@@ -93,3 +93,5 @@ export function SongRow({ song, index, context, showAlbum = true }: SongRowProps
     </SongContextMenu>
   );
 }
+
+export const SongRow = memo(SongRowComponent);

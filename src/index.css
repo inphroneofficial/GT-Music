@@ -132,6 +132,7 @@
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: hsl(var(--background));
     background-image:
       radial-gradient(circle at top left, hsla(var(--primary) / 0.08), transparent 30%),
       linear-gradient(180deg, hsla(0 0% 100% / 0.02), transparent 30%);
@@ -142,6 +143,12 @@
   html {
     scroll-behavior: smooth;
     background: hsl(var(--background));
+  }
+
+  button,
+  [role='button'],
+  input[type='range'] {
+    touch-action: manipulation;
   }
 
   /* Custom scrollbar — subtle */
@@ -172,6 +179,11 @@
     backdrop-filter: blur(48px) saturate(1.8);
     background: hsla(240, 8%, 6%, 0.9);
     border: 1px solid hsla(240, 5%, 20%, 0.2);
+  }
+
+  .virtual-list-surface {
+    contain: layout paint style;
+    content-visibility: auto;
   }
 
   /* Gradient header — warm amber wash */

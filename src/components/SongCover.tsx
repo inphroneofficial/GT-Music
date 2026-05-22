@@ -1,13 +1,13 @@
 import { useSongCoverState } from '@/hooks/useSongCover';
 import type { Song } from '@/types/music';
-import { ImgHTMLAttributes, useEffect, useState } from 'react';
+import { ImgHTMLAttributes, memo, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface Props extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   song: Song | null | undefined;
 }
 
-export function SongCover({ song, alt, loading = 'lazy', decoding = 'async', className, ...rest }: Props) {
+function SongCoverComponent({ song, alt, loading = 'lazy', decoding = 'async', className, ...rest }: Props) {
   const { src, loading: extracting } = useSongCoverState(song);
   const [imgLoaded, setImgLoaded] = useState(false);
   const showSkeleton = extracting || !imgLoaded;
@@ -41,3 +41,5 @@ export function SongCover({ song, alt, loading = 'lazy', decoding = 'async', cla
     </span>
   );
 }
+
+export const SongCover = memo(SongCoverComponent);

@@ -52,8 +52,8 @@ export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay
       ms.setActionHandler('seekto', (d: any) => {
         if (typeof d.seekTime === 'number') onSeek(d.seekTime);
       });
-      ms.setActionHandler('seekbackward', (d: any) => onSeek(Math.max(0, currentTime - (d.seekOffset || 10))));
-      ms.setActionHandler('seekforward', (d: any) => onSeek(Math.min(duration, currentTime + (d.seekOffset || 10))));
+      ms.setActionHandler('seekbackward', null);
+      ms.setActionHandler('seekforward', null);
     } catch {}
     return () => {
       try {

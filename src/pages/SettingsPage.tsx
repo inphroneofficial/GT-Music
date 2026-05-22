@@ -92,8 +92,8 @@ const SettingsPage = () => {
               <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <MetricCard label="Profile" value={activePreset?.label ?? 'Flat'} />
                 <MetricCard label="Bass" value={`${settings.bassBoost}/10`} />
-                <MetricCard label="Speed" value={`${settings.playbackSpeed}x`} />
-                <MetricCard label="Engine" value={preferNativeAudio ? 'Native' : 'DSP'} />
+                <MetricCard label="Width" value={`${settings.stereoWidening}/10`} />
+                <MetricCard label="Engine" value={preferNativeAudio ? 'Hybrid DSP' : 'DSP'} />
               </div>
               <div className="rounded-2xl border border-border/30 bg-background/30 p-4">
                 <AudioEqualizer />
@@ -134,6 +134,44 @@ const SettingsPage = () => {
                 max={12}
                 step={1}
                 onValueChange={([value]) => updateSettings({ crossfadeDuration: value })}
+                className="cursor-pointer"
+              />
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="rounded-[2rem] border border-border/30 bg-card/50 p-4 md:p-5 animate-fade-in" style={{ animationDelay: '200ms' }}>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Headphones className="h-5 w-5 text-primary" />
+                  <h2 className="text-base font-bold text-foreground md:text-lg">Stereo Widening</h2>
+                </div>
+                <span className="text-sm tabular-nums text-muted-foreground">{settings.stereoWidening}/10</span>
+              </div>
+              <Slider
+                value={[settings.stereoWidening]}
+                min={0}
+                max={10}
+                step={1}
+                onValueChange={([value]) => updateSettings({ stereoWidening: value })}
+                className="cursor-pointer"
+              />
+            </div>
+
+            <div className="rounded-[2rem] border border-border/30 bg-card/50 p-4 md:p-5 animate-fade-in" style={{ animationDelay: '220ms' }}>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h2 className="text-base font-bold text-foreground md:text-lg">Fade In</h2>
+                </div>
+                <span className="text-sm tabular-nums text-muted-foreground">{settings.fadeInDuration}s</span>
+              </div>
+              <Slider
+                value={[settings.fadeInDuration]}
+                min={0}
+                max={4}
+                step={0.5}
+                onValueChange={([value]) => updateSettings({ fadeInDuration: value })}
                 className="cursor-pointer"
               />
             </div>
@@ -184,6 +222,13 @@ const SettingsPage = () => {
               desc="Sends the same mix to both sides."
               value={settings.monoAudio}
               onChange={(value) => updateSettings({ monoAudio: value })}
+            />
+            <ToggleRow
+              icon={<Waves className="h-5 w-5 text-primary" />}
+              title="Spatial Audio"
+              desc="Adds a light room-style spatial depth when supported."
+              value={settings.spatialAudio}
+              onChange={(value) => updateSettings({ spatialAudio: value })}
             />
             <ToggleRow
               icon={<Sparkles className="h-5 w-5 text-primary" />}

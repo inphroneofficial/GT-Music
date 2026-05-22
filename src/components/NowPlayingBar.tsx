@@ -17,7 +17,7 @@ export function NowPlayingBar() {
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume, currentTime, duration, seek, preferNativeAudio,
+    volume, setVolume, currentTime, duration, seek,
     isLiked, toggleLike, setIsFullScreen, isQueueOpen, setIsQueueOpen,
     settings, updateSettings,
   } = useMusic();
@@ -191,14 +191,18 @@ export function NowPlayingBar() {
                 >
                   <ListMusic className={`w-4 h-4 transition-colors ${isQueueOpen ? 'text-primary' : 'text-muted-foreground'}`} />
                 </Button>
-                <VolumeIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                {preferNativeAudio ? (
-                  <span className="w-20 text-right text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Device
-                  </span>
-                ) : (
-                  <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-20 cursor-pointer" />
-                )}
+                <div className="flex items-center gap-2 rounded-full border border-border/40 bg-background/40 px-2.5 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setVolume(volume === 0 ? 0.72 : 0)}
+                    className="tap-target touch-manipulation rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+                  >
+                    <VolumeIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-24 cursor-pointer" />
+                  <span className="w-8 text-[10px] font-semibold tabular-nums text-muted-foreground">{Math.round(volume * 100)}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -58,6 +58,23 @@
       rel="stylesheet"
     />
 
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('gt-settings');
+          var parsed = raw ? JSON.parse(raw) : null;
+          var theme = parsed && parsed.theme ? parsed.theme : 'dark';
+          var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+          var isLight = theme === 'light' || (theme === 'system' && prefersLight);
+          var root = document.documentElement;
+          root.classList.toggle('light', isLight);
+          root.style.colorScheme = isLight ? 'light' : 'dark';
+          root.style.backgroundColor = isLight ? '#fafafa' : '#0a0a0f';
+          document.write('<style>html,body,#root{background:' + (isLight ? '#fafafa' : '#0a0a0f') + ';min-height:100%}</style>');
+        } catch {}
+      })();
+    </script>
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -72,7 +89,7 @@
       }
     </script>
   </head>
-  <body>
+  <body style="background:#0a0a0f">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

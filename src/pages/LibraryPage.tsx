@@ -1,80 +1,127 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Music, Heart, LibraryBig } from 'lucide-react';
+import { Download, Heart, LibraryBig, Music, Plus, TimerReset, TrendingUp } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
 import { AlbumCard } from '@/components/MusicCards';
-import { SongRow } from '@/components/SongRow';
+import { VirtualizedSongList } from '@/components/VirtualizedSongList';
 import { SEO } from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { resolveSongCoverPath } from '@/lib/songMetadata';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
+
+const tabs = [
+  { value: 'all', label: 'All Songs' },
+  { value: 'recent', label: 'Recently Played' },
+  { value: 'mostPlayed', label: 'Most Played' },
+  { value: 'favorites', label: 'Favorites' },
+  { value: 'downloaded', label: 'Downloaded' },
+  { value: 'albums', label: 'Albums' },
+  { value: 'artists', label: 'Artists' },
+  { value: 'playlists', label: 'Playlists' },
+];
 
 const LibraryPage = () => {
   const navigate = useNavigate();
-  const { allSongs, playlists, likedSongIds, createPlaylist } = useMusic();
+  const {
+    allSongs,
+    playlists,
+    likedSongIds,
+    createPlaylist,
+    recentlyPlayed,
+    playCounts,
+  } = useMusic();
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const likedSongs = useMemo(
-    () => allSongs.filter(s => likedSongIds.includes(s.id)),
-    [allSongs, likedSongIds]
+    () => allSongs.filter((song) => likedSongIds.includes(song.id)),
+    [allSongs, likedSongIds],
   );
 
+  const recentlyPlayedSongs = useMemo(
+    () => recentlyPlayed.map((id) => allSongs.find((song) => song.id === id)).filter(Boolean) as typeof allSongs,
+    [allSongs, recentlyPlayed],
+  );
+
+  const mostPlayedSongs = useMemo(() => {
+    return [...allSongs]
+      .sort((left, right) => (playCounts[right.id] || 0) - (playCounts[left.id] || 0))
+      .filter((song) => (playCounts[song.id] || 0) > 0);
+  }, [allSongs, playCounts]);
+
   const albums = useMemo(() => {
-    const map = new Map<string, { name: string; artist: string; cover: string }>();
-    allSongs.forEach(s => {
-      if (!map.has(s.album)) map.set(s.album, { name: s.album, artist: s.artist, cover: resolveSongCoverPath(s.cover) });
+    const grouped = new Map<string, { name: string; artist: string; cover: string }>();
+    allSongs.forEach((song) => {
+      if (!grouped.has(song.album)) {
+        grouped.set(song.album, {
+          name: song.album,
+          artist: song.artist,
+          cover: resolveSongCoverPath(song.cover),
+        });
+      }
     });
-    return Array.from(map.values());
+    return Array.from(grouped.values());
   }, [allSongs]);
 
   const artists = useMemo(() => {
-    const map = new Map<string, { name: string; cover: string; songCount: number }>();
-    allSongs.forEach(s => {
-      if (!map.has(s.artist)) map.set(s.artist, { name: s.artist, cover: resolveSongCoverPath(s.cover), songCount: 0 });
-      map.get(s.artist)!.songCount++;
+    const grouped = new Map<string, { name: string; cover: string; songCount: number }>();
+    allSongs.forEach((song) => {
+      if (!grouped.has(song.artist)) {
+        grouped.set(song.artist, {
+          name: song.artist,
+          cover: resolveSongCoverPath(song.cover),
+          songCount: 0,
+        });
+      }
+      grouped.get(song.artist)!.songCount += 1;
     });
-    return Array.from(map.values());
+    return Array.from(grouped.values());
   }, [allSongs]);
 
   const handleCreatePlaylist = () => {
-    if (newPlaylistName.trim()) {
-      createPlaylist(newPlaylistName.trim());
-      setNewPlaylistName('');
-      setDialogOpen(false);
-    }
+    if (!newPlaylistName.trim()) return;
+    createPlaylist(newPlaylistName.trim());
+    setNewPlaylistName('');
+    setDialogOpen(false);
   };
 
   return (
     <ScrollArea className="h-full">
-      <SEO title="Library" description="Browse your playlists, albums, artists, and liked songs in GT Music." path="/library" />
-      <div className="px-4 md:px-6 pt-4 md:pt-6 pb-40 max-w-full">
-        <div className="flex items-center justify-between mb-5 md:mb-6 animate-fade-in">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">Your Library</h1>
+      <SEO title="Library" description="Browse every song, artist, album, and playlist inside GT Music." path="/library" />
+      <div className="px-4 pb-40 pt-4 md:px-6 md:pt-6">
+        <div className="mb-5 flex items-center justify-between gap-3 md:mb-6">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">Your Library</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Everything imported, organized, and ready to play.</p>
+          </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-card btn-press tap-target">
-                <Plus className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full btn-press">
+                <Plus className="h-5 w-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border/50 rounded-2xl animate-scale-in max-w-[92vw] sm:max-w-md">
+            <DialogContent className="max-w-[92vw] rounded-2xl border-border/40 bg-card sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-foreground">Create Playlist</DialogTitle>
+                <DialogTitle>Create Playlist</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
+              <div className="space-y-4 pt-2">
                 <Input
                   value={newPlaylistName}
-                  onChange={e => setNewPlaylistName(e.target.value)}
+                  onChange={(event) => setNewPlaylistName(event.target.value)}
                   placeholder="Playlist name"
-                  className="bg-accent border-border/50 rounded-xl"
-                  onKeyDown={e => e.key === 'Enter' && handleCreatePlaylist()}
+                  className="rounded-xl bg-accent/40"
+                  onKeyDown={(event) => event.key === 'Enter' && handleCreatePlaylist()}
                 />
-                <Button onClick={handleCreatePlaylist} className="w-full btn-gradient text-primary-foreground rounded-xl border-0">
+                <Button onClick={handleCreatePlaylist} className="w-full rounded-xl border-0 btn-gradient text-primary-foreground">
                   Create
                 </Button>
               </div>
@@ -82,127 +129,170 @@ const LibraryPage = () => {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="playlists">
-          <div className="-mx-4 md:mx-0 mb-5 md:mb-6 overflow-x-auto no-scrollbar">
-            <TabsList className="bg-transparent gap-2 px-4 md:px-0 inline-flex w-max animate-fade-in" style={{ animationDelay: '100ms' }}>
-              {['playlists', 'albums', 'artists', 'liked'].map((tab) => (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={<Music className="h-5 w-5 text-primary" />} label="All Songs" value={`${allSongs.length}`} detail="Full imported catalog" />
+          <StatCard icon={<TimerReset className="h-5 w-5 text-primary" />} label="Recent" value={`${recentlyPlayedSongs.length}`} detail="Last listening sessions" />
+          <StatCard icon={<TrendingUp className="h-5 w-5 text-primary" />} label="Most Played" value={`${mostPlayedSongs.length}`} detail="Based on your real history" />
+          <StatCard icon={<Download className="h-5 w-5 text-primary" />} label="Downloaded" value={`${allSongs.length}`} detail="Available locally in GT Music" />
+        </div>
+
+        <Tabs defaultValue="all">
+          <div className="-mx-4 mb-5 overflow-x-auto no-scrollbar md:mx-0">
+            <TabsList className="inline-flex w-max gap-2 bg-transparent px-4 md:px-0">
+              {tabs.map((tab) => (
                 <TabsTrigger
-                  key={tab}
-                  value={tab}
-                  className="rounded-full px-4 py-1.5 text-sm font-medium data-[state=active]:btn-gradient data-[state=active]:text-primary-foreground data-[state=active]:border-0 bg-card border border-border/50 transition-all duration-200 btn-press whitespace-nowrap"
+                  key={tab.value}
+                  value={tab.value}
+                  className="whitespace-nowrap rounded-full border border-border/40 bg-card px-4 py-1.5 text-sm font-medium data-[state=active]:btn-gradient data-[state=active]:border-transparent data-[state=active]:text-primary-foreground"
                 >
-                  {tab === 'liked' ? 'Liked Songs' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab.label}
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
 
-          <TabsContent value="playlists">
-            <div
-              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-gradient-to-r from-primary/15 to-primary/5 cursor-pointer hover:from-primary/20 transition-all duration-300 mb-4 border border-primary/10 animate-fade-in-scale"
-              onClick={() => navigate('/liked')}
-            >
-              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl btn-gradient flex items-center justify-center shadow-lg flex-shrink-0">
-                <Heart className="w-5 h-5 md:w-6 md:h-6 text-primary-foreground fill-primary-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-foreground truncate">Liked Songs</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{likedSongs.length} songs</p>
-              </div>
-            </div>
+          <TabsContent value="all">
+            <VirtualizedSongList songs={allSongs} />
+          </TabsContent>
 
-            {playlists.length === 0 && (
-              <div className="text-center py-12 md:py-16 animate-fade-in">
-                <div className="w-16 h-16 rounded-full bg-card mx-auto mb-4 flex items-center justify-center animate-float">
-                  <LibraryBig className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground text-sm">No playlists yet</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Create one to get started</p>
-              </div>
-            )}
-            <div className="space-y-1">
-              {playlists.map((pl, i) => (
-                <div
-                  key={pl.id}
-                  className="flex items-center gap-3 md:gap-4 p-3 rounded-xl hover:bg-card cursor-pointer transition-all duration-200 border border-transparent hover:border-border/30 animate-slide-in-left song-row-bar"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                  onClick={() => navigate(`/playlist/${pl.id}`)}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-card flex items-center justify-center border border-border/30 flex-shrink-0">
-                    <Music className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{pl.name}</p>
-                    <p className="text-xs text-muted-foreground">{pl.songIds.length} songs</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <TabsContent value="recent">
+            {recentlyPlayedSongs.length === 0 ? <EmptyState icon={<TimerReset className="h-7 w-7 text-muted-foreground" />} title="No recent songs yet" detail="Start playing to build your history." /> : <VirtualizedSongList songs={recentlyPlayedSongs} />}
+          </TabsContent>
+
+          <TabsContent value="mostPlayed">
+            {mostPlayedSongs.length === 0 ? <EmptyState icon={<TrendingUp className="h-7 w-7 text-muted-foreground" />} title="No play analytics yet" detail="Your most-played tracks will appear here after a few sessions." /> : <VirtualizedSongList songs={mostPlayedSongs} />}
+          </TabsContent>
+
+          <TabsContent value="favorites">
+            {likedSongs.length === 0 ? <EmptyState icon={<Heart className="h-7 w-7 text-muted-foreground" />} title="No favorites yet" detail="Tap the heart on any song to save it here." /> : <VirtualizedSongList songs={likedSongs} />}
+          </TabsContent>
+
+          <TabsContent value="downloaded">
+            <VirtualizedSongList songs={allSongs} />
           </TabsContent>
 
           <TabsContent value="albums">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-              {albums.map((a, i) => (
-                <div key={a.name} className="animate-fade-in-scale" style={{ animationDelay: `${i * 50}ms` }}>
-                  <AlbumCard
-                    name={a.name}
-                    artist={a.artist}
-                    cover={a.cover}
-                    onClick={() => navigate(`/album/${encodeURIComponent(a.name)}`)}
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {albums.map((album) => (
+                <AlbumCard
+                  key={album.name}
+                  name={album.name}
+                  artist={album.artist}
+                  cover={album.cover}
+                  onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
+                />
               ))}
             </div>
           </TabsContent>
 
           <TabsContent value="artists">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-              {artists.map((a, i) => (
-                <div
-                  key={a.name}
-                  className="p-2.5 md:p-3 rounded-2xl bg-card/50 hover:bg-card transition-all cursor-pointer hover-card-lift animate-fade-in-scale"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                  onClick={() => navigate(`/artist/${encodeURIComponent(a.name)}`)}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {artists.map((artist) => (
+                <button
+                  key={artist.name}
+                  className="rounded-2xl border border-border/30 bg-card/50 p-3 text-left transition-colors hover:bg-card"
+                  onClick={() => navigate(`/artist/${encodeURIComponent(artist.name)}`)}
                 >
-                  <div className="w-full aspect-square rounded-full overflow-hidden mb-2 md:mb-3 bg-muted">
+                  <div className="mb-3 aspect-square overflow-hidden rounded-full bg-muted">
                     <img
-                      src={a.cover}
-                      alt={a.name}
+                      src={artist.cover}
+                      alt={artist.name}
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+                      className="h-full w-full object-cover"
+                      onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }}
                     />
                   </div>
-                  <p className="text-xs md:text-sm font-semibold text-foreground truncate">{a.name}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground">{a.songCount} songs</p>
-                </div>
+                  <p className="truncate text-sm font-semibold text-foreground">{artist.name}</p>
+                  <p className="text-xs text-muted-foreground">{artist.songCount} songs</p>
+                </button>
               ))}
             </div>
           </TabsContent>
 
-          <TabsContent value="liked">
-            {likedSongs.length === 0 && (
-              <div className="text-center py-12 md:py-16 animate-fade-in">
-                <div className="w-16 h-16 rounded-full bg-card mx-auto mb-4 flex items-center justify-center">
-                  <Heart className="w-7 h-7 text-muted-foreground animate-pulse-glow" />
-                </div>
-                <p className="text-muted-foreground text-sm">No liked songs yet</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Start liking songs to see them here</p>
+          <TabsContent value="playlists">
+            <div
+              className="mb-4 flex cursor-pointer items-center gap-4 rounded-2xl border border-primary/10 bg-gradient-to-r from-primary/15 to-primary/5 p-4"
+              onClick={() => navigate('/liked')}
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl btn-gradient">
+                <Heart className="h-6 w-6 fill-primary-foreground text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-foreground">Liked Songs</p>
+                <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
+              </div>
+            </div>
+
+            {playlists.length === 0 ? (
+              <EmptyState icon={<LibraryBig className="h-7 w-7 text-muted-foreground" />} title="No playlists yet" detail="Create a playlist to start organizing your library." />
+            ) : (
+              <div className="space-y-1">
+                {playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    className="flex w-full items-center gap-4 rounded-xl border border-transparent p-3 text-left transition-all hover:border-border/30 hover:bg-card"
+                    onClick={() => navigate(`/playlist/${playlist.id}`)}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/30 bg-card">
+                      <Music className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{playlist.name}</p>
+                      <p className="text-xs text-muted-foreground">{playlist.songIds.length} songs</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
-            <div className="space-y-0.5">
-              {likedSongs.map((song, i) => (
-                <div key={song.id} className="animate-slide-in-left" style={{ animationDelay: `${i * 40}ms` }}>
-                  <SongRow song={song} index={i} context={likedSongs} />
-                </div>
-              ))}
-            </div>
           </TabsContent>
         </Tabs>
       </div>
     </ScrollArea>
   );
 };
+
+function StatCard({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[1.6rem] border border-border/30 bg-card/50 p-4">
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-background/50">
+        {icon}
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  detail,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[1.75rem] border border-border/30 bg-card/40 px-6 text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-card">
+        {icon}
+      </div>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-2 max-w-sm text-xs leading-6 text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
 
 export default LibraryPage;

@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
@@ -75,11 +75,20 @@ function getMomentTitle(ambientMode: string, weatherLabel?: string) {
   return weatherLabel ? `Built for ${weatherLabel}` : 'Play for This Moment';
 }
 
+function stableHash(input: string) {
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) % 9973;
+  }
+  return hash;
+}
+
 const HomePage = () => {
   const navigate = useNavigate();
-  const { allSongs, recentlyPlayed, playlists, playSong, currentSong, isPlaying, togglePlay, loading, playCounts, playHistory } = useMusic();
+  const { allSongs, recentlyPlayed, playlists, playSong, currentSong, isPlaying, togglePlay, loading, playCounts, playHistory, likedSongIds } = useMusic();
   const { now, weather, quote, ambientMode, greeting, subtitle, loadingWeather, refreshQuote } = useHomeAmbient();
   const deferredSongs = useDeferredValue(allSongs);
+  const [featureCycle, setFeatureCycle] = useState(0);
 
   const recentSongs = useMemo(
     () => recentlyPlayed.map((id) => deferredSongs.find((song) => song.id === id)).filter(Boolean) as Song[],
@@ -97,8 +106,51 @@ const HomePage = () => {
     return Array.from(map.values());
   }, [deferredSongs]);
 
-  const featured = deferredSongs[0];
-  const quickPicks = albums.slice(0, 3);
+  const recommendationPool = useMemo(() => {
+    return [...deferredSongs]
+      .map((song, index) => {
+        const playScore = playCounts[song.id] || 0;
+        const recentIndex = recentlyPlayed.indexOf(song.id);
+        const likedBoost = likedSongIds.includes(song.id) ? 18 : 0;
+        const recentBoost = recentIndex >= 0 ? Math.max(0, 24 - recentIndex * 4) : 0;
+        const trendingBoost = Math.max(0, 12 - index);
+        const ambientScore = scoreSongForMoment(song, ambientMode, weather?.mood) * 2;
+        const varietyBoost = stableHash(`${song.id}-${ambientMode}`) % 13;
+
+        return {
+          song,
+          score: playScore * 6 + likedBoost + recentBoost + trendingBoost + ambientScore + varietyBoost,
+        };
+      })
+      .sort((left, right) => right.score - left.score)
+      .map((entry) => entry.song);
+  }, [ambientMode, deferredSongs, likedSongIds, playCounts, recentlyPlayed, weather?.mood]);
+
+  const featuredPool = useMemo(
+    () => recommendationPool.slice(0, Math.min(12, Math.max(4, recommendationPool.length))),
+    [recommendationPool],
+  );
+  const featured = featuredPool.length > 0 ? featuredPool[featureCycle % featuredPool.length] : null;
+
+  const quickPicks = useMemo(() => {
+    const featuredAlbum = featured?.album;
+    return albums
+      .filter((album) => album.name !== featuredAlbum)
+      .sort((left, right) => {
+        const leftScore = recommendationPool.findIndex((song) => song.album === left.name);
+        const rightScore = recommendationPool.findIndex((song) => song.album === right.name);
+        return (leftScore === -1 ? Number.MAX_SAFE_INTEGER : leftScore) - (rightScore === -1 ? Number.MAX_SAFE_INTEGER : rightScore);
+      })
+      .slice(0, 3);
+  }, [albums, featured?.album, recommendationPool]);
+
+  useEffect(() => {
+    if (featuredPool.length < 2) return;
+    const timer = window.setInterval(() => {
+      setFeatureCycle((value) => (value + 1) % featuredPool.length);
+    }, 12000);
+    return () => window.clearInterval(timer);
+  }, [featuredPool.length]);
 
   const weatherIcon = useMemo(
     () => getWeatherIcon(weather?.mood ?? 'unknown', weather?.isDay ?? true),
@@ -267,8 +319,8 @@ const HomePage = () => {
                 <div className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/10 backdrop-blur-xl">
                   <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-white/10 px-4 py-3">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Featured Release</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Jump back in with a quick one-tap play.</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Featured Rotation</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Shifts through recent plays, favorites, and mood-based picks.</p>
                     </div>
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                       <Headphones className="h-3.5 w-3.5" />

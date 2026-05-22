@@ -73,10 +73,13 @@ export interface AppSettings {
   eqPreset: EQPresetName;
   eqCustomBands: number[];
   crossfadeDuration: number; // seconds 0-12
+  fadeInDuration: number; // seconds 0-4
   playbackSpeed: number;
   normalization: boolean;
   bassBoost: number; // 0-10
+  stereoWidening: number; // 0-10
   monoAudio: boolean;
+  spatialAudio: boolean;
   reducedMotion: boolean;
   gapless: boolean;
   sleepTimerMinutes: number | null; // null = off
@@ -88,10 +91,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   eqPreset: 'flat',
   eqCustomBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   crossfadeDuration: 0,
+  fadeInDuration: 1,
   playbackSpeed: 1,
   normalization: false,
   bassBoost: 0,
+  stereoWidening: 0,
   monoAudio: false,
+  spatialAudio: false,
   reducedMotion: false,
   gapless: true,
   sleepTimerMinutes: null,
