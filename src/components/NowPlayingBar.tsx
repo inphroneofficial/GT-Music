@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, ListMusic, Maximize2, Heart
+  ListMusic, Maximize2, Heart
 } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
 import { Equalizer } from '@/components/Equalizer';
@@ -17,7 +17,7 @@ export function NowPlayingBar() {
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume, currentTime, duration, seek,
+    currentTime, duration, seek,
     isLiked, toggleLike, setIsFullScreen, isQueueOpen, setIsQueueOpen,
     settings, updateSettings,
   } = useMusic();
@@ -33,7 +33,6 @@ export function NowPlayingBar() {
 
   if (!currentSong) return null;
 
-  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const RepeatIcon = repeat === 'one' ? Repeat1 : Repeat;
   const progress = duration ? (currentTime / duration) * 100 : 0;
 
@@ -153,7 +152,7 @@ export function NowPlayingBar() {
                 </div>
               </div>
 
-              {/* Right: Volume, extras */}
+              {/* Right: Playback extras */}
               <div className="flex items-center justify-end gap-1.5 md:w-[210px] xl:w-[240px]">
                 {isPlaying && <Equalizer playing={isPlaying} size="sm" className="mr-1" />}
 
@@ -191,17 +190,10 @@ export function NowPlayingBar() {
                 >
                   <ListMusic className={`w-4 h-4 transition-colors ${isQueueOpen ? 'text-primary' : 'text-muted-foreground'}`} />
                 </Button>
-                <div className="flex items-center gap-2 rounded-full border border-border/40 bg-background/40 px-2.5 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setVolume(volume === 0 ? 0.72 : 0)}
-                    className="tap-target touch-manipulation rounded-full text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-                  >
-                    <VolumeIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="w-24 cursor-pointer" />
-                  <span className="w-8 text-[10px] font-semibold tabular-nums text-muted-foreground">{Math.round(volume * 100)}</span>
+                <div className="flex items-center gap-2 rounded-full border border-border/40 bg-background/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <span className="text-primary">{repeatLabel(repeat)}</span>
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
+                  <span>{shuffle ? 'Shuffled' : 'Queue'}</span>
                 </div>
               </div>
             </div>
@@ -210,4 +202,10 @@ export function NowPlayingBar() {
       </div>
     </>
   );
+}
+
+function repeatLabel(repeat: 'off' | 'all' | 'one') {
+  if (repeat === 'one') return 'Repeat 1';
+  if (repeat === 'all') return 'Repeat';
+  return 'Flow';
 }

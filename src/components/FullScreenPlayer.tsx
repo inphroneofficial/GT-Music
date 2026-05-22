@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, Heart, ChevronDown, ListMusic, Settings2, RotateCcw, RotateCw, SlidersHorizontal
+  Heart, ChevronDown, ListMusic, Settings2, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, Disc3
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMusic } from '@/contexts/MusicContext';
@@ -20,7 +20,7 @@ export function FullScreenPlayer() {
   const {
     currentSong, isPlaying, togglePlay, nextTrack, prevTrack,
     shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume, currentTime, duration, seek,
+    currentTime, duration, seek,
     isLiked, toggleLike, isFullScreen, setIsFullScreen,
     isQueueOpen, setIsQueueOpen, settings, updateSettings,
   } = useMusic();
@@ -38,7 +38,6 @@ export function FullScreenPlayer() {
 
   if (!isFullScreen || !currentSong) return null;
 
-  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const RepeatIcon = repeat === 'one' ? Repeat1 : Repeat;
   const repeatLabel = repeat === 'off' ? 'Off' : repeat === 'all' ? 'All' : 'One';
 
@@ -212,22 +211,25 @@ export function FullScreenPlayer() {
             </Button>
           </div>
 
-          <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
-            <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Volume</span>
-              <span>{Math.round(volume * 100)}%</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                className="tap-target touch-manipulation flex h-11 w-11 items-center justify-center rounded-full bg-background/50 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-                data-no-swipe="true"
-              >
-                <VolumeIcon className="h-4 w-4" />
-              </button>
-              <Slider value={[volume * 100]} max={100} step={1} onValueChange={([v]) => setVolume(v / 100)} className="flex-1 cursor-pointer" />
-            </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <PlayerInsightCard
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Mode"
+              value={shuffle ? 'Shuffled' : 'Linear'}
+              detail="Queue behavior"
+            />
+            <PlayerInsightCard
+              icon={<Disc3 className="h-4 w-4" />}
+              label="Repeat"
+              value={repeatLabel}
+              detail="Playback loop"
+            />
+            <PlayerInsightCard
+              icon={<SlidersHorizontal className="h-4 w-4" />}
+              label="Speed"
+              value={`${settings.playbackSpeed}x`}
+              detail="Current pace"
+            />
           </div>
 
           <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
@@ -255,6 +257,29 @@ export function FullScreenPlayer() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlayerInsightCard({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card/40 p-4 backdrop-blur-xl">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-background/55 text-primary">
+        {icon}
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
