@@ -175,8 +175,8 @@ const LibraryPage = () => {
           <MiniStat label="Liked" value={`${likedSongs.length}`} />
         </div>
 
-        <div className="-mx-4 mb-4 overflow-x-auto no-scrollbar px-4 md:mx-0 md:px-0">
-          <div className="flex w-max gap-2.5 pb-1">
+        <div className="-mx-4 mb-5 overflow-x-auto no-scrollbar px-4 md:mx-0 md:px-0 md:overflow-visible">
+          <div className="flex w-max gap-2.5 pb-1 md:grid md:w-full md:grid-cols-4 md:gap-3 xl:grid-cols-8">
             {sections.map(({ value, label, shortLabel, icon: Icon, tone }) => {
               const active = activeSection === value;
               return (
@@ -184,7 +184,7 @@ const LibraryPage = () => {
                   key={value}
                   type="button"
                   onClick={() => setActiveSection(value)}
-                  className={`relative min-w-[132px] overflow-hidden rounded-[1.35rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press ${
+                  className={`relative min-w-[132px] overflow-hidden rounded-[1.35rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press md:min-w-0 md:px-4 md:py-4 ${
                     active
                       ? 'border-primary/30 bg-card shadow-[0_14px_30px_-24px_hsl(var(--primary)/0.45)]'
                       : 'border-border/30 bg-card/55 hover:bg-card/80'
@@ -195,8 +195,8 @@ const LibraryPage = () => {
                     <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl ${active ? 'bg-primary text-primary-foreground' : 'bg-background/65 text-primary'}`}>
                       <Icon className="h-4.5 w-4.5" />
                     </div>
-                    <p className="text-sm font-semibold text-foreground">{shortLabel}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+                    <p className="text-sm font-semibold text-foreground md:text-[15px]">{shortLabel}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground md:line-clamp-1">{label}</p>
                   </div>
                 </button>
               );
@@ -204,10 +204,21 @@ const LibraryPage = () => {
           </div>
         </div>
 
-        <div className="mb-4 rounded-[1.35rem] border border-border/30 bg-card/55 px-4 py-3">
+        <div className="mb-5 rounded-[1.35rem] border border-border/30 bg-card/55 px-4 py-3 md:flex md:items-center md:justify-between md:px-5 md:py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Now Browsing</p>
-          <h2 className="pt-1 text-lg font-bold text-foreground">{activeMeta.title}</h2>
-          <p className="pt-0.5 text-xs text-muted-foreground">{activeMeta.detail}</p>
+          <div className="pt-1 md:flex-1 md:px-4 md:pt-0">
+            <h2 className="text-lg font-bold text-foreground">{activeMeta.title}</h2>
+            <p className="pt-0.5 text-xs text-muted-foreground md:text-sm">{activeMeta.detail}</p>
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground md:mt-0">
+            <span>{activeSection === 'all' || activeSection === 'downloaded' ? `${allSongs.length} songs` : null}</span>
+            <span>{activeSection === 'albums' ? `${albums.length} albums` : null}</span>
+            <span>{activeSection === 'artists' ? `${artists.length} artists` : null}</span>
+            <span>{activeSection === 'liked' ? `${likedSongs.length} liked` : null}</span>
+            <span>{activeSection === 'playlists' ? `${playlists.length} playlists` : null}</span>
+            <span>{activeSection === 'recent' ? `${recentlyPlayedSongs.length} recent` : null}</span>
+            <span>{activeSection === 'mostPlayed' ? `${mostPlayedSongs.length} tracked` : null}</span>
+          </div>
         </div>
       </div>
 
@@ -216,7 +227,7 @@ const LibraryPage = () => {
           <VirtualizedSongList
             songs={allSongs}
             maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
-            containerClassName="border-0 bg-transparent rounded-none"
+            containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
           />
         )}
 
@@ -227,7 +238,7 @@ const LibraryPage = () => {
             <VirtualizedSongList
               songs={likedSongs}
               maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
-              containerClassName="border-0 bg-transparent rounded-none"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
         )}
@@ -239,7 +250,7 @@ const LibraryPage = () => {
             <VirtualizedSongList
               songs={recentlyPlayedSongs}
               maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
-              containerClassName="border-0 bg-transparent rounded-none"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
         )}
@@ -251,7 +262,7 @@ const LibraryPage = () => {
             <VirtualizedSongList
               songs={mostPlayedSongs}
               maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
-              containerClassName="border-0 bg-transparent rounded-none"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
         )}
@@ -260,7 +271,7 @@ const LibraryPage = () => {
           <VirtualizedSongList
             songs={allSongs}
             maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
-            containerClassName="border-0 bg-transparent rounded-none"
+            containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
           />
         )}
 
@@ -348,7 +359,7 @@ function CompactMediaCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-[138px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-2.5 text-left transition-colors hover:bg-card"
+      className="w-[138px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-2.5 text-left transition-colors hover:bg-card md:w-full"
     >
       <div className={`mb-2.5 overflow-hidden bg-muted ${circle ? 'rounded-full' : 'rounded-[1rem]'}`}>
         <img
@@ -379,7 +390,7 @@ function CompactPlaylistCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-[150px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-3 text-left transition-colors hover:bg-card"
+      className="w-[150px] flex-shrink-0 rounded-[1.2rem] border border-border/25 bg-card/50 p-3 text-left transition-colors hover:bg-card md:w-full"
     >
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[1rem] bg-primary/10 text-primary">
         <ListMusic className="h-5 w-5" />

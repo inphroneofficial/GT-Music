@@ -24,6 +24,7 @@ export function VirtualizedSongList({
   const [viewportHeight, setViewportHeight] = useState(620);
   const overscan = 6;
   const activeContext = context ?? songs;
+  const shouldVirtualize = songs.length > 160;
   const totalHeight = songs.length * itemHeight;
   const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
   const endIndex = Math.min(
@@ -55,6 +56,21 @@ export function VirtualizedSongList({
       window.removeEventListener('orientationchange', updateHeight);
     };
   }, []);
+
+  if (!shouldVirtualize) {
+    return (
+      <div
+        ref={containerRef}
+        className={containerClassName}
+      >
+        <div className="space-y-0.5">
+          {songs.map((song, index) => (
+            <SongRow key={song.id} song={song} index={index} context={activeContext} showAlbum={showAlbum} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -117,7 +117,20 @@ function applyTheme(mode: 'dark' | 'light' | 'system') {
 
 function shouldPreferNativeAudio() {
   if (typeof navigator === 'undefined') return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+function shouldUseEnhancedAudio(settings: AppSettings, preferNativeAudio: boolean) {
+  if (preferNativeAudio) return false;
+  if (settings.eqPreset !== 'flat') return true;
+  if (settings.eqCustomBands.some((band) => band !== 0)) return true;
+  if (settings.bassBoost > 0) return true;
+  if (settings.normalization) return true;
+  if (settings.monoAudio) return true;
+  if (settings.stereoWidening > 0) return true;
+  if (settings.spatialAudio) return true;
+  if (settings.crossfadeDuration > 0) return true;
+  return false;
 }
 
 function applyMetadataToSong(song: Song, metadata: { title?: string; artist?: string; album?: string; coverUrl?: string }): Song {
@@ -154,7 +167,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [queueIndex, setQueueIndex] = useState(0);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>('off');
-  const [volume, setVolumeState] = useState(0.78);
+  const [volume, setVolumeState] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -168,6 +181,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [preferNativeAudio] = useState(() => shouldPreferNativeAudio());
+  const useEnhancedAudio = useMemo(() => shouldUseEnhancedAudio(settings, preferNativeAudio), [settings, preferNativeAudio]);
 
   useEffect(() => {
     currentSongRef.current = currentSong;
@@ -242,30 +256,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audio.loop = false;
       audio.setAttribute('playsinline', 'true');
       audio.setAttribute('webkit-playsinline', 'true');
-      audio.volume = volume;
+      audio.volume = useEnhancedAudio ? volume : 1;
       audioRef.current = audio;
     }
     return audioRef.current;
-  }, [volume]);
+  }, [useEnhancedAudio, volume]);
+
+  const cleanupAudioEngine = useCallback(() => {
+    const engine = audioEngineRef.current;
+    if (!engine) return;
+    try {
+      engine.source.disconnect();
+    } catch {}
+    try {
+      engine.ctx.close().catch(() => {});
+    } catch {}
+    audioEngineRef.current = null;
+  }, []);
 
   const ensureAudioEngine = useCallback(() => {
+    if (!useEnhancedAudio) return null;
     const audio = ensureAudio();
     if (audioEngineRef.current) return audioEngineRef.current;
     const engine = createAudioEngine(audio, settings, volume);
     audioEngineRef.current = engine;
     return engine;
-  }, [ensureAudio, settings, volume]);
+  }, [ensureAudio, settings, useEnhancedAudio, volume]);
 
   const refreshEngineSettings = useCallback((nextSettings = settings, nextVolume = volume) => {
     const audio = ensureAudio();
+    const shouldEnhance = shouldUseEnhancedAudio(nextSettings, preferNativeAudio);
     const engine = audioEngineRef.current;
+    if (!shouldEnhance) {
+      if (engine) cleanupAudioEngine();
+      audio.volume = 1;
+      audio.playbackRate = nextSettings.playbackSpeed;
+      return;
+    }
     if (engine) {
       applyAudioSettings(engine, audio, nextSettings, nextVolume);
     } else {
       audio.volume = nextVolume;
       audio.playbackRate = nextSettings.playbackSpeed;
     }
-  }, [ensureAudio, settings, volume]);
+  }, [cleanupAudioEngine, ensureAudio, preferNativeAudio, settings, volume]);
 
   const updateSongEverywhere = useCallback((songId: string, metadata: { title?: string; artist?: string; album?: string; coverUrl?: string }) => {
     setCurrentSong((existing) => {
@@ -592,7 +626,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     refreshEngineSettings();
-  }, [refreshEngineSettings, settings, volume]);
+  }, [refreshEngineSettings, settings, useEnhancedAudio, volume]);
 
   useEffect(() => {
     localStorage.setItem('gt-settings', JSON.stringify(settings));
@@ -662,7 +696,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setVolumeState(clamped);
     const audio = ensureAudio();
     const engine = audioEngineRef.current;
-    if (engine) {
+    if (engine && useEnhancedAudio) {
       applyAudioSettings(engine, audio, settings, clamped);
       rampOutputVolume(engine, clamped);
       if (!audio.paused) {
@@ -671,7 +705,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       audio.volume = clamped;
     }
-  }, [ensureAudio, settings]);
+  }, [ensureAudio, settings, useEnhancedAudio]);
 
   const toggleShuffle = useCallback(() => setShuffle((existing) => !existing), []);
   const toggleRepeat = useCallback(() => {
@@ -802,11 +836,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     return () => {
       audioRef.current?.pause();
-      if (audioEngineRef.current) {
-        audioEngineRef.current.ctx.close().catch(() => {});
-      }
+      cleanupAudioEngine();
     };
-  }, []);
+  }, [cleanupAudioEngine]);
 
   const value = useMemo<MusicContextType>(() => ({
     currentSong,
