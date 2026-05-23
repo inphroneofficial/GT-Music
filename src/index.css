@@ -433,6 +433,74 @@
   .developer-bar-delay-2 { animation-delay: 0.24s; }
   .developer-bar-delay-3 { animation-delay: 0.36s; }
 
+  .splash-photo-frame {
+    position: relative;
+  }
+
+  .splash-photo-frame::before {
+    content: '';
+    position: absolute;
+    inset: -18px;
+    border-radius: 2.2rem;
+    background: radial-gradient(circle, hsla(var(--primary) / 0.18) 0%, transparent 72%);
+    filter: blur(12px);
+    animation: splash-halo 2.8s ease-in-out infinite;
+  }
+
+  .splash-bar {
+    width: 4px;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, hsla(24, 95%, 60%, 1), hsla(350, 80%, 60%, 1));
+    transform-origin: bottom center;
+    animation: splash-beat 0.95s ease-in-out infinite;
+  }
+
+  .splash-orb-float {
+    animation: splash-orb-float 9s ease-in-out infinite;
+  }
+
+  .splash-orb-float-delayed {
+    animation: splash-orb-float 12s ease-in-out infinite reverse;
+  }
+
+  .gtk-trigger::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    background:
+      linear-gradient(135deg, hsla(var(--primary) / 0.12), transparent 42%),
+      radial-gradient(circle at 85% 15%, hsla(350 80% 60% / 0.12), transparent 34%);
+    opacity: 0.9;
+  }
+
+  .gtk-orb::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 999px;
+    background: radial-gradient(circle, hsla(var(--primary) / 0.18) 0%, transparent 70%);
+    animation: gtk-pulse 2.4s ease-in-out infinite;
+  }
+
+  .gtk-bars {
+    position: relative;
+    z-index: 1;
+  }
+
+  .gtk-bar {
+    width: 3px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, hsla(24, 95%, 60%, 1), hsla(350, 80%, 60%, 1));
+    animation: gtk-beat 0.95s ease-in-out infinite;
+    transform-origin: bottom center;
+  }
+
+  .gtk-bar-delay-1 { animation-delay: 0.14s; }
+  .gtk-bar-delay-2 { animation-delay: 0.28s; }
+
   /* Safe-area utilities (iOS notch, Android gesture bar) */
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -572,4 +640,141 @@ html[data-reduced-motion="true"] *::after {
     transform: scaleY(1.4);
     opacity: 1;
   }
+}
+
+@keyframes gtk-beat {
+  0%, 100% {
+    transform: scaleY(0.6);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1.45);
+    opacity: 1;
+  }
+}
+
+@keyframes gtk-pulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-pulse {
+  0% {
+    transform: scale(0.78);
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes splash-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.03);
+    filter: blur(10px);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(0.82);
+    opacity: 0.42;
+    box-shadow: 0 0 0 hsla(var(--primary) / 0.2);
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 18px hsla(var(--primary) / 0.45);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes splash-halo {
+  0%, 100% {
+    transform: scale(0.96);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-beat {
+  0%, 100% {
+    transform: scaleY(0.58);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1.5);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-orb-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -18px, 0) scale(1.04);
+  }
+}
+
+.animate-splash-pulse {
+  animation: splash-pulse 2.6s ease-out infinite;
+}
+
+.animate-splash-fade-out {
+  animation: splash-fade-out 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 1.4s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 10s linear infinite;
 }

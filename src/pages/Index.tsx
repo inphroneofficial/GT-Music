@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SkeletonCard, SkeletonHero, SkeletonQuickPick } from '@/components/SkeletonCards';
 import { Equalizer } from '@/components/Equalizer';
+import { DeveloperDialog } from '@/components/DeveloperDialog';
 import { SongContextMenu } from '@/components/SongContextMenu';
 import { SongCover } from '@/components/SongCover';
 import { SEO } from '@/components/SEO';
@@ -370,10 +371,11 @@ const HomePage = () => {
                     onClick={() => navigate('/library')}
                     className="flex h-12 items-center gap-2 rounded-full border border-border/60 px-5 transition-colors btn-press hover:bg-card/60 md:h-14 md:px-6"
                     aria-label="Open library"
-                  >
-                    <Plus className="h-5 w-5" />
-                    Open Library
-                  </button>
+                    >
+                      <Plus className="h-5 w-5" />
+                      Open Library
+                    </button>
+                  <DeveloperDialog variant="gtk" />
                 </div>
               </div>
             </div>

@@ -1,29 +1,91 @@
 # GT Music
 
-GT Music is a Vite + React music player for a personal local library.
+GT Music is a premium personal music player built for people who want control over their own listening experience.
 
-## Where to keep songs
+It was created as an alternative to ad-heavy streaming apps that keep basic features behind subscriptions, push unwanted recommendations, and make your own library feel secondary. GT Music focuses on your songs, your mood, your playlists, and your way of listening.
 
-Put your audio files inside `public/songs/`.
+## What GT Music includes
 
-Examples:
-- `public/songs/My Song.mp3`
-- `public/songs/Another Track.m4a`
+- Personal local-library playback with a polished app-style UI
+- Dynamic MP3 metadata reading with `jsmediatags`
+- Embedded cover-art support with placeholder fallback
+- Home screen with ambient mood sections, weather/time context, quotes, and personalized recommendations
+- Library sections for `All Songs`, `Albums`, `Artists`, `Liked Songs`, `Playlists`, `Recently Played`, `Most Played`, and `Downloaded`
+- Mobile-friendly player shell with mini-player, fullscreen player, queue, and lock-screen media session support
+- Theme switching, accent colors, EQ controls, bass boost, stereo widening, crossfade, fade-in, and playback-speed controls
+- Listening analytics such as recent activity and most-played tracking
+- PWA-ready install support for a more native feel
 
-If you want custom cover images, keep them inside `public/songs/covers/`.
+## Why this app exists
 
-Examples:
-- `public/songs/covers/default.jpg`
-- `public/songs/covers/album-1.jpg`
+GT Music was built out of frustration with typical streaming apps:
 
-## How playback works
+- too many ads
+- too many locked features unless you subscribe
+- too many unwanted suggestions
+- not enough focus on the songs you actually love
 
-This app loads songs from `public/songs/manifest.json`.
+So this app takes the opposite approach: a personal player that feels cinematic, direct, and fully yours.
 
-Each song entry uses:
-- `file`: the exact filename inside `public/songs/`
-- `cover`: the image path relative to `public/songs/`
-- `title`, `artist`, `album`, `genre`, `duration`: the metadata shown in the UI
+## Tech stack
+
+- Vite
+- React 18
+- TypeScript
+- Tailwind CSS
+- shadcn/ui + Radix UI
+- React Router
+- TanStack Query
+- `jsmediatags` for reading song metadata
+
+## Project scripts
+
+```bash
+npm install
+npm run dev
+```
+
+Other useful scripts:
+
+```bash
+npm run build
+npm run preview
+npm run lint
+npm run test
+```
+
+## Music library structure
+
+GT Music currently loads songs from manifest files in:
+
+- `public/songs/manifest.json`
+- `public/Melodies/manifest.json`
+
+Audio files live in:
+
+- `public/songs/`
+- `public/Melodies/`
+
+Cover images can live in:
+
+- `public/songs/covers/`
+
+Fallback placeholder:
+
+- `public/placeholder.svg`
+
+## How song loading works
+
+Each manifest contains a `songs` array. Every entry can define:
+
+- `id`
+- `title`
+- `artist`
+- `album`
+- `duration`
+- `file`
+- `cover`
+- `genre`
 
 Example:
 
@@ -40,4 +102,56 @@ Example:
 }
 ```
 
-If the cover image is missing, GT Music falls back to `public/placeholder.svg`. If a track has embedded artwork, the app can also try to read it from the audio file.
+The app can also enrich display data directly from MP3 metadata:
+
+- `tags.title`
+- `tags.artist`
+- `tags.album`
+- embedded artwork from `tags.picture`
+
+If embedded art is present, GT Music converts it into a base64 `data:` image URL and uses it in the UI. If no cover is found, it falls back to `public/placeholder.svg`.
+
+## Adding new songs
+
+### Option 1: Add to `public/songs`
+
+1. Put the audio files inside `public/songs/`
+2. Add entries to `public/songs/manifest.json`
+3. Optionally place custom covers in `public/songs/covers/`
+
+### Option 2: Add to `public/Melodies`
+
+1. Put the audio files inside `public/Melodies/`
+2. Add entries to `public/Melodies/manifest.json`
+
+Notes:
+
+- Use the exact filename in the `file` field
+- If your MP3 already contains good metadata and album art, GT Music can read that dynamically
+- Manifest values act as a reliable fallback when tags are missing
+
+## UX direction
+
+GT Music is designed to feel closer to a real modern music product than a simple website:
+
+- mobile-first layouts
+- safe-area-aware spacing
+- smooth page transitions
+- premium gradients, glow, and motion
+- fast browsing for longer libraries
+- personalized home and library organization
+
+## Current focus areas
+
+The app is already in a strong usable state, and the next high-impact improvements would be:
+
+- deeper bundle splitting for faster first load
+- more advanced playlist workflows
+- richer statistics and listening insights
+- more device-level QA across Android Chrome and iPhone Safari
+
+## Author
+
+Designed and developed by Thangella.
+
+Built for a cleaner, more personal way to listen.

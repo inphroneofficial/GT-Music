@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
 import {
   AudioLines,
   Download,
   Gauge,
   Headphones,
-  Instagram,
   Monitor,
   Moon,
   Palette,
@@ -19,24 +17,11 @@ import { useMusic } from '@/contexts/MusicContext';
 import type { AccentColor, ThemeMode } from '@/types/music';
 import { ACCENT_COLORS, EQ_PRESETS, SPEED_OPTIONS } from '@/types/music';
 import { AudioEqualizer } from '@/components/AudioEqualizer';
+import { DeveloperDialog } from '@/components/DeveloperDialog';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SEO } from '@/components/SEO';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-const DEVELOPER_IMAGES = [
-  '/ChatGPT Image May 19, 2026, 04_52_49 PM.png',
-  '/ChatGPT Image May 19, 2026, 05_05_30 PM.png',
-  '/ChatGPT Image May 19, 2026, 05_27_19 PM.png',
-];
 
 const SettingsPage = () => {
   const { settings, updateSettings, preferNativeAudio } = useMusic();
@@ -320,126 +305,6 @@ function ToggleRow({
         </div>
       </div>
       <Switch checked={value} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-function DeveloperDialog() {
-  const images = useMemo(() => DEVELOPER_IMAGES, []);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const interval = window.setInterval(() => {
-      setActiveImageIndex((currentIndex) => (currentIndex + 1) % images.length);
-    }, 3200);
-
-    return () => window.clearInterval(interval);
-  }, [images]);
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button className="tap-target rounded-[2rem] border border-primary/20 bg-primary/10 px-5 py-4 text-left text-sm font-semibold text-primary transition-colors btn-press hover:bg-primary/15">
-          Designed and Developed by Thangella
-        </button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[min(92vh,860px)] max-w-[92vw] overflow-hidden rounded-[2rem] border-border/40 bg-background p-0 shadow-2xl sm:max-w-3xl">
-        <div className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 premium-hero-night opacity-80" />
-          <div className="pointer-events-none absolute -left-16 top-0 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
-          <div className="pointer-events-none absolute -right-16 bottom-0 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-
-          <div className="relative max-h-[min(92vh,860px)] overflow-y-auto p-5 sm:p-7">
-            <DialogHeader className="mb-5 text-left">
-              <DialogTitle className="text-xl font-bold text-foreground sm:text-2xl">Designed and Developed by Thangella</DialogTitle>
-              <DialogDescription className="text-sm leading-6 text-muted-foreground">
-                A focused music experience built to feel personal, cinematic, and smoother than a typical web player.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-5 md:grid-cols-[minmax(0,300px)_1fr] md:items-center">
-              <div className="mx-auto w-full max-w-[300px] perspective-card">
-                <div className="developer-photo-card relative overflow-hidden rounded-[2rem] border border-white/10 bg-card/60 p-3 shadow-[0_30px_60px_-24px_hsl(var(--primary)/0.55)]">
-                  <div className="pointer-events-none absolute inset-x-8 top-3 h-10 rounded-full bg-primary/10 blur-2xl" />
-                  <div className="developer-photo-stage relative aspect-[4/5] overflow-hidden rounded-[1.4rem] border border-white/10 bg-background/70">
-                    {images.map((image, index) => (
-                      <div
-                        key={image}
-                        className={`absolute inset-0 transition-all duration-700 ${index === activeImageIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.03]'}`}
-                      >
-                        <img
-                          src={image}
-                          alt={`Thangella portrait ${index + 1}`}
-                          className="absolute inset-0 h-full w-full object-cover opacity-30 blur-2xl scale-110"
-                          aria-hidden="true"
-                          onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }}
-                        />
-                        <img
-                          src={image}
-                          alt={`Thangella portrait ${index + 1}`}
-                          className="absolute inset-0 h-full w-full object-contain p-3"
-                          onError={(event) => { (event.target as HTMLImageElement).src = '/placeholder.svg'; }}
-                        />
-                      </div>
-                    ))}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/70 to-transparent" />
-                    <div className="developer-audio-bars pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-end gap-1 rounded-full border border-white/10 bg-background/50 px-3 py-2 backdrop-blur-md">
-                      <span className="developer-bar" />
-                      <span className="developer-bar developer-bar-delay-1" />
-                      <span className="developer-bar developer-bar-delay-2" />
-                      <span className="developer-bar developer-bar-delay-3" />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-center gap-2">
-                    {images.map((image, index) => (
-                      <button
-                        key={`${image}-dot`}
-                        type="button"
-                        onClick={() => setActiveImageIndex(index)}
-                        className={`h-2.5 rounded-full transition-all ${index === activeImageIndex ? 'w-7 bg-primary' : 'w-2.5 bg-white/25 hover:bg-white/40'}`}
-                        aria-label={`Show image ${index + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-border/30 bg-card/50 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Creator</p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">Thangella</p>
-                  <a
-                    href="https://instagram.com/thangella"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <Instagram className="h-4 w-4 text-primary" />
-                    instagram.com/thangella
-                  </a>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <InfoCard title="Why I built this" value="To make a player that feels personal, stylish, and truly mine instead of generic." />
-                  <InfoCard title="About this app" value="GT Music blends local playback, rich metadata, mood-first discovery, and custom sound control." />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function InfoCard({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border/30 bg-card/50 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{value}</p>
     </div>
   );
 }
