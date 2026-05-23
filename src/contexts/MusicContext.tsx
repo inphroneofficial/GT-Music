@@ -459,6 +459,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const audio = ensureAudio();
     const engine = ensureAudioEngine();
     await resumeAudioEngine(engine);
+    audio.muted = false;
+    audio.defaultMuted = false;
+    audio.volume = useEnhancedAudio ? volume : 1;
+    audio.playbackRate = settings.playbackSpeed;
 
     if (!currentSongRef.current) {
       const fallbackSong = buildFallbackQueue()[0];
@@ -490,38 +494,56 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    const hardResumeCurrentTrack = async () => {
+      const fallbackSong = currentSongRef.current;
+      if (!fallbackSong) return;
+
+      const restoreTime = Number.isFinite(resumePosition) ? resumePosition : 0;
+      const sourceUrl = resolveSongFilePath(fallbackSong.file);
+
+      audio.pause();
+      audio.src = sourceUrl;
+      audio.load();
+
+      const resumePlayback = () => {
+        try {
+          if (restoreTime > 0) {
+            audio.currentTime = Math.min(restoreTime, audio.duration || restoreTime);
+          }
+        } catch {}
+
+        audio.play()
+          .then(() => {
+            setIsPlaying(true);
+            audioStateRef.current = 'ready';
+          })
+          .catch(() => {
+            audioStateRef.current = 'ready';
+          });
+      };
+
+      if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resumePlayback();
+      } else {
+        audio.addEventListener('canplay', resumePlayback, { once: true });
+      }
+    };
+
     try {
       await audio.play();
       setIsPlaying(true);
       audioStateRef.current = 'ready';
+      if (preferNativeAudio && document.visibilityState !== 'visible') {
+        window.setTimeout(() => {
+          if (!audio.paused && currentSongRef.current) {
+            hardResumeCurrentTrack().catch(() => {});
+          }
+        }, 180);
+      }
     } catch {
-      try {
-        audio.load();
-        const restoreTime = Number.isFinite(resumePosition) ? resumePosition : 0;
-        const restorePlayback = () => {
-          try {
-            if (restoreTime > 0 && Number.isFinite(audio.duration || restoreTime)) {
-              audio.currentTime = restoreTime;
-            }
-          } catch {}
-          audio.play()
-            .then(() => {
-              setIsPlaying(true);
-              audioStateRef.current = 'ready';
-            })
-            .catch(() => {
-              audioStateRef.current = 'ready';
-            });
-        };
-
-        if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-          restorePlayback();
-        } else {
-          audio.addEventListener('canplay', restorePlayback, { once: true });
-        }
-      } catch {}
+      hardResumeCurrentTrack().catch(() => {});
     }
-  }, [addToRecent, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, transitionToSong]);
+  }, [addToRecent, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, preferNativeAudio, settings.playbackSpeed, transitionToSong, useEnhancedAudio, volume]);
 
   const togglePlay = useCallback(() => {
     const audio = ensureAudio();
