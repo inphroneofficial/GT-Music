@@ -120,6 +120,18 @@ function shouldPreferNativeAudio() {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
+function isIOSSafari() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+}
+
+function isAndroidChrome() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /Android/i.test(ua) && /Chrome|Chromium/i.test(ua) && !/EdgA|OPR|SamsungBrowser/i.test(ua);
+}
+
 function shouldUseEnhancedAudio(settings: AppSettings, preferNativeAudio: boolean) {
   if (preferNativeAudio) return false;
   if (settings.eqPreset !== 'flat') return true;
@@ -181,6 +193,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [preferNativeAudio] = useState(() => shouldPreferNativeAudio());
+  const [iosSafari] = useState(() => isIOSSafari());
+  const [androidChrome] = useState(() => isAndroidChrome());
   const useEnhancedAudio = useMemo(() => shouldUseEnhancedAudio(settings, preferNativeAudio), [settings, preferNativeAudio]);
 
   useEffect(() => {
@@ -502,6 +516,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const sourceUrl = resolveSongFilePath(fallbackSong.file);
 
       audio.pause();
+      audio.muted = false;
+      audio.defaultMuted = false;
+      audio.volume = useEnhancedAudio ? volume : 1;
       audio.src = sourceUrl;
       audio.load();
 
@@ -512,7 +529,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         } catch {}
 
-        audio.play()
+        const attemptPlay = () => audio.play()
           .then(() => {
             setIsPlaying(true);
             audioStateRef.current = 'ready';
@@ -520,6 +537,20 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .catch(() => {
             audioStateRef.current = 'ready';
           });
+
+        if (iosSafari) {
+          window.setTimeout(() => {
+            try {
+              audio.pause();
+            } catch {}
+            window.setTimeout(() => {
+              attemptPlay();
+            }, 80);
+          }, 40);
+          return;
+        }
+
+        attemptPlay().then?.(() => {});
       };
 
       if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -533,7 +564,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await audio.play();
       setIsPlaying(true);
       audioStateRef.current = 'ready';
-      if (preferNativeAudio && document.visibilityState !== 'visible') {
+      if (iosSafari && document.visibilityState !== 'visible') {
+        window.setTimeout(() => {
+          hardResumeCurrentTrack().catch(() => {});
+        }, 120);
+      } else if (androidChrome && document.visibilityState !== 'visible') {
         window.setTimeout(() => {
           if (!audio.paused && currentSongRef.current) {
             hardResumeCurrentTrack().catch(() => {});
@@ -543,7 +578,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       hardResumeCurrentTrack().catch(() => {});
     }
-  }, [addToRecent, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, preferNativeAudio, settings.playbackSpeed, transitionToSong, useEnhancedAudio, volume]);
+  }, [addToRecent, androidChrome, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, iosSafari, preferNativeAudio, settings.playbackSpeed, transitionToSong, useEnhancedAudio, volume]);
 
   const togglePlay = useCallback(() => {
     const audio = ensureAudio();
@@ -662,6 +697,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const recoverPlayback = () => {
       if (!currentSongRef.current || !isPlayingRef.current) return;
       resumeAudioEngine(audioEngineRef.current).catch(() => {});
+      if (audioRef.current) {
+        audioRef.current.muted = false;
+        audioRef.current.defaultMuted = false;
+        audioRef.current.volume = useEnhancedAudio ? volume : 1;
+      }
       if (audioRef.current?.paused && audioStateRef.current !== 'ended') {
         audioRef.current.play().catch(() => {});
       }
@@ -682,7 +722,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       window.removeEventListener('pageshow', recoverPlayback);
       window.removeEventListener('focus', recoverPlayback);
     };
-  }, []);
+  }, [useEnhancedAudio, volume]);
 
   useEffect(() => {
     refreshEngineSettings();
