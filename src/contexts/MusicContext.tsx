@@ -469,6 +469,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    const resumePosition = audio.currentTime || 0;
+    const currentSongFileUrl = resolveSongFilePath(currentSongRef.current.file);
+    const needsReload =
+      !audio.src ||
+      !audio.src.endsWith(encodeURI(currentSongRef.current.file).replace(/#/g, '%23')) ||
+      audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE;
+
+    if (needsReload) {
+      audio.src = currentSongFileUrl;
+      audio.load();
+    }
+
     const ended = audio.ended || audioStateRef.current === 'ended' || (!!audio.duration && audio.currentTime >= audio.duration - 0.35);
     if (ended) {
       const nextCandidate = getNextTrackCandidate(1) ?? { song: currentSongRef.current, index: queueIndexRef.current };
@@ -482,7 +494,33 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await audio.play();
       setIsPlaying(true);
       audioStateRef.current = 'ready';
-    } catch {}
+    } catch {
+      try {
+        audio.load();
+        const restoreTime = Number.isFinite(resumePosition) ? resumePosition : 0;
+        const restorePlayback = () => {
+          try {
+            if (restoreTime > 0 && Number.isFinite(audio.duration || restoreTime)) {
+              audio.currentTime = restoreTime;
+            }
+          } catch {}
+          audio.play()
+            .then(() => {
+              setIsPlaying(true);
+              audioStateRef.current = 'ready';
+            })
+            .catch(() => {
+              audioStateRef.current = 'ready';
+            });
+        };
+
+        if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          restorePlayback();
+        } else {
+          audio.addEventListener('canplay', restorePlayback, { once: true });
+        }
+      } catch {}
+    }
   }, [addToRecent, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, transitionToSong]);
 
   const togglePlay = useCallback(() => {

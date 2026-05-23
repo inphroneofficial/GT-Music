@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type TouchEvent } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
   Heart, ChevronDown, ListMusic, Settings2, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, Disc3
@@ -9,7 +9,6 @@ import { Equalizer } from '@/components/Equalizer';
 import { SleepTimer } from '@/components/SleepTimer';
 import { ParticleField } from '@/components/ParticleField';
 import { formatTime } from '@/lib/formatTime';
-import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useSongCover } from '@/hooks/useSongCover';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -27,14 +26,8 @@ export function FullScreenPlayer() {
 
   const [heartAnim, setHeartAnim] = useState(false);
   const coverSrc = useSongCover(currentSong);
-
-  const swipeHandlers = useSwipeGesture({
-    onSwipe: (dir) => {
-      if (dir === 'down') setIsFullScreen(false);
-      if (dir === 'left') nextTrack();
-      if (dir === 'right') prevTrack();
-    },
-  });
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; scrollTop: number } | null>(null);
 
   if (!isFullScreen || !currentSong) return null;
 
@@ -51,10 +44,47 @@ export function FullScreenPlayer() {
     seek(Math.max(0, Math.min(duration || 0, currentTime + delta)));
   };
 
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest('button, a, input, textarea, select, [role="button"], [data-no-swipe="true"]')) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    touchStartRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      scrollTop: scrollRef.current?.scrollTop ?? 0,
+    };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+
+    const dx = event.changedTouches[0].clientX - start.x;
+    const dy = event.changedTouches[0].clientY - start.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (absX > absY && absX > 60) {
+      if (dx < 0) nextTrack();
+      else prevTrack();
+      return;
+    }
+
+    const startedAtTop = start.scrollTop <= 8;
+    if (startedAtTop && absY > absX && dy > 72) {
+      setIsFullScreen(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col bg-background animate-fade-in-scale"
-      {...swipeHandlers}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden bg-background">
@@ -72,6 +102,7 @@ export function FullScreenPlayer() {
       </div>
 
       <div
+        ref={scrollRef}
         className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center overflow-y-auto px-4 pb-8 md:px-8"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)' }}
       >
