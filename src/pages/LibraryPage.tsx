@@ -226,7 +226,7 @@ const LibraryPage = () => {
         {activeSection === 'all' && (
           <VirtualizedSongList
             songs={allSongs}
-            maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
+            maxHeightClassName="max-h-[62vh]"
             containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
           />
         )}
@@ -237,7 +237,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={likedSongs}
-              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
+              maxHeightClassName="max-h-[62vh]"
               containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
@@ -249,7 +249,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={recentlyPlayedSongs}
-              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
+              maxHeightClassName="max-h-[62vh]"
               containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
@@ -261,7 +261,7 @@ const LibraryPage = () => {
           ) : (
             <VirtualizedSongList
               songs={mostPlayedSongs}
-              maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
+              maxHeightClassName="max-h-[62vh]"
               containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
             />
           )
@@ -270,7 +270,7 @@ const LibraryPage = () => {
         {activeSection === 'downloaded' && (
           <VirtualizedSongList
             songs={allSongs}
-            maxHeightClassName="h-[56vh] min-h-[420px] md:h-[62vh]"
+            maxHeightClassName="max-h-[62vh]"
             containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
           />
         )}
