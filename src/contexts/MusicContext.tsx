@@ -17,6 +17,7 @@ import {
   resumeAudioEngine,
   setImmediateAudioLevel,
 } from '@/lib/audioEngine';
+import { getSongMood } from '@/lib/moods';
 import { hasCustomCover, readSongFileMetadata, resolveSongFilePath, SONG_PLACEHOLDER_COVER } from '@/lib/songMetadata';
 import { ACCENT_COLORS, DEFAULT_SETTINGS } from '@/types/music';
 import type { AppSettings, Playlist, RepeatMode, Song } from '@/types/music';
@@ -145,8 +146,15 @@ function shouldUseEnhancedAudio(settings: AppSettings, preferNativeAudio: boolea
   return false;
 }
 
-function applyMetadataToSong(song: Song, metadata: { title?: string; artist?: string; album?: string; coverUrl?: string }): Song {
+function normalizeLibrarySong(song: Song): Song {
   return {
+    ...song,
+    mood: getSongMood(song),
+  };
+}
+
+function applyMetadataToSong(song: Song, metadata: { title?: string; artist?: string; album?: string; coverUrl?: string }): Song {
+  const nextSong = {
     ...song,
     title: metadata.title || song.title,
     artist: metadata.artist || song.artist,
@@ -157,6 +165,8 @@ function applyMetadataToSong(song: Song, metadata: { title?: string; artist?: st
         ? song.cover
         : SONG_PLACEHOLDER_COVER,
   };
+
+  return normalizeLibrarySong(nextSong);
 }
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -246,7 +256,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .then(async ([songsResult, melodiesResult]) => {
         const manifestSongs = songsResult.status === 'fulfilled' ? songsResult.value.songs ?? [] : [];
         const melodiesSongs = melodiesResult.status === 'fulfilled' ? melodiesResult.value.songs ?? [] : [];
-        const mergedSongs: Song[] = [...manifestSongs, ...melodiesSongs];
+        const mergedSongs: Song[] = [...manifestSongs, ...melodiesSongs].map(normalizeLibrarySong);
         setAllSongs(mergedSongs);
         setLoading(false);
 
@@ -281,10 +291,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!engine) return;
     try {
       engine.source.disconnect();
-    } catch {}
+    } catch {
+      // The source may already be disconnected during audio-mode switches.
+    }
     try {
-      engine.ctx.close().catch(() => {});
-    } catch {}
+      engine.ctx.close().catch(() => undefined);
+    } catch {
+      // Closing an already-closed AudioContext is safe to ignore.
+    }
     audioEngineRef.current = null;
   }, []);
 
@@ -527,7 +541,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (restoreTime > 0) {
             audio.currentTime = Math.min(restoreTime, audio.duration || restoreTime);
           }
-        } catch {}
+        } catch {
+          // Restoring time can fail before metadata is available.
+        }
 
         const attemptPlay = () => audio.play()
           .then(() => {
@@ -542,7 +558,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           window.setTimeout(() => {
             try {
               audio.pause();
-            } catch {}
+            } catch {
+              // iOS can reject pause during quick lock-screen recovery.
+            }
             window.setTimeout(() => {
               attemptPlay();
             }, 80);
@@ -929,7 +947,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       try {
         document.head.removeChild(preload);
-      } catch {}
+      } catch {
+        // Preload may already be gone after route/player teardown.
+      }
     };
   }, [currentTime, duration, getNextTrackCandidate, queue.length, settings.gapless]);
 

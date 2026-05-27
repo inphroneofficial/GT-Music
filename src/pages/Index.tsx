@@ -27,11 +27,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SkeletonCard, SkeletonHero, SkeletonQuickPick } from '@/components/SkeletonCards';
 import { Equalizer } from '@/components/Equalizer';
 import { DeveloperDialog } from '@/components/DeveloperDialog';
+import { MoodCard } from '@/components/MoodCard';
 import { SongContextMenu } from '@/components/SongContextMenu';
 import { SongCover } from '@/components/SongCover';
 import { SEO } from '@/components/SEO';
 import { TypingText } from '@/components/TypingText';
 import { useHomeAmbient } from '@/hooks/useHomeAmbient';
+import { groupSongsByMood } from '@/lib/moods';
 import { resolveSongCoverPath } from '@/lib/songMetadata';
 import type { Song } from '@/types/music';
 
@@ -52,7 +54,7 @@ function getMoodTags(ambientMode: string, weatherMood?: string) {
 }
 
 function scoreSongForMoment(song: Song, ambientMode: string, weatherMood?: string) {
-  const haystack = `${song.title} ${song.artist} ${song.album} ${song.genre ?? ''}`.toLowerCase();
+  const haystack = `${song.title} ${song.artist} ${song.album} ${song.genre ?? ''} ${song.mood ?? ''}`.toLowerCase();
   const tags = getMoodTags(ambientMode, weatherMood);
   let score = 0;
 
@@ -164,12 +166,28 @@ const HomePage = () => {
       .slice(0, 4);
   }, [ambientMode, deferredSongs, weather?.mood]);
 
+  const moodGroups = useMemo(() => groupSongsByMood(deferredSongs), [deferredSongs]);
+
   const mostPlayedSongs = useMemo(() => {
     const sorted = [...deferredSongs]
       .sort((a, b) => (playCounts[b.id] || 0) - (playCounts[a.id] || 0));
     const withRealPlays = sorted.filter((song) => (playCounts[song.id] || 0) > 0);
     return (withRealPlays.length > 0 ? withRealPlays : sorted).slice(0, 5);
   }, [deferredSongs, playCounts]);
+
+  const worldLineup = useMemo(() => {
+    const unique = new Map<string, Song>();
+    [
+      ...(featured ? [featured] : []),
+      ...weatherDrivenSongs,
+      ...mostPlayedSongs,
+      ...recentSongs,
+      ...recommendationPool,
+    ].forEach((song) => {
+      if (!unique.has(song.id)) unique.set(song.id, song);
+    });
+    return Array.from(unique.values()).slice(0, 6);
+  }, [featured, mostPlayedSongs, recentSongs, recommendationPool, weatherDrivenSongs]);
 
   const listeningInsights = useMemo(() => {
     const totalPlays = Object.values(playCounts).reduce((sum, count) => sum + count, 0);
@@ -205,6 +223,7 @@ const HomePage = () => {
   );
   const momentTitle = useMemo(() => getMomentTitle(ambientMode, weather?.label), [ambientMode, weather?.label]);
   const WeatherIcon = weatherIcon;
+  const featuredCover = featured ? resolveSongCoverPath(featured.cover) : '/image-1.jpeg';
 
   if (loading) {
     return (
@@ -267,6 +286,49 @@ const HomePage = () => {
                     {subtitle}
                   </p>
                 </div>
+
+                <SonicGateway
+                  featured={featured}
+                  featuredCover={featuredCover}
+                  lineup={worldLineup}
+                  timeLabel={timeLabel}
+                  weatherLabel={weather?.label ?? 'Local'}
+                  ambientMode={ambientMode}
+                  totalPlays={listeningInsights.totalPlays}
+                  onPlay={() => {
+                    if (featured) playSong(featured, recommendationPool);
+                  }}
+                />
+
+                <section className="space-y-3">
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Your Mood</p>
+                      <h2 className="text-xl font-extrabold tracking-tight text-foreground">Pick songs by feeling</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/mood/melodies')}
+                      className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                    >
+                      View all
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="-mx-6 max-w-[100vw] px-6 xl:mx-0 xl:max-w-full xl:px-0">
+                    <div className="mood-scroll-rail xl:grid-cols-5">
+                      {moodGroups.map((group) => (
+                        <MoodCard
+                          key={group.mood}
+                          mood={group.mood}
+                          songs={group.songs}
+                          compact
+                          onClick={() => navigate(`/mood/${group.mood}`)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </section>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-[1.65rem] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.1)] backdrop-blur-xl">
@@ -371,10 +433,10 @@ const HomePage = () => {
                     onClick={() => navigate('/library')}
                     className="flex h-12 items-center gap-2 rounded-full border border-border/60 px-5 transition-colors btn-press hover:bg-card/60 md:h-14 md:px-6"
                     aria-label="Open library"
-                    >
-                      <Plus className="h-5 w-5" />
-                      Open Library
-                    </button>
+                  >
+                    <Plus className="h-5 w-5" />
+                    Open Library
+                  </button>
                   <DeveloperDialog variant="gtk" />
                 </div>
               </div>
@@ -382,35 +444,41 @@ const HomePage = () => {
 
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-[2rem] border border-border/40 bg-card/60 p-5 glass animate-fade-in md:p-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
                       <BarChart3 className="h-4 w-4" />
                       Listening Analysis
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">{listeningInsights.totalPlays} tracked plays</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Your app now tracks repeat habits, peak hours, and favorites.</p>
+                    <h3 className="text-lg font-semibold leading-tight text-foreground sm:text-xl">
+                      {listeningInsights.totalPlays} tracked plays
+                    </h3>
+                    <p className="mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
+                      Your app now tracks repeat habits, peak hours, and favorites.
+                    </p>
                   </div>
-                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-primary">
+                  <span className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-primary">
                     Real usage
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Top artist</p>
-                    <p className="mt-2 truncate text-base font-semibold text-foreground">{listeningInsights.topArtist}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{listeningInsights.topArtistPlays} plays</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Peak hour</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">{listeningInsights.peakHour}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">When you return most often</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Active days</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">{listeningInsights.activeDays}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Days with tracked listening</p>
-                  </div>
+                <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-3">
+                  <InsightTile
+                    label="Top artist"
+                    value={listeningInsights.topArtist}
+                    detail={`${listeningInsights.topArtistPlays} plays`}
+                  />
+                  <InsightTile
+                    label="Peak hour"
+                    value={listeningInsights.peakHour}
+                    detail="When you return most often"
+                    valueClassName="text-xl sm:text-2xl"
+                  />
+                  <InsightTile
+                    label="Active days"
+                    value={listeningInsights.activeDays}
+                    detail="Days with tracked listening"
+                    valueClassName="text-xl sm:text-2xl"
+                  />
                 </div>
               </div>
 
@@ -525,7 +593,7 @@ const HomePage = () => {
                           <h3 className="mt-2 truncate text-lg font-semibold text-foreground">{song.title}</h3>
                           <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
                           <p className="mt-3 text-xs text-muted-foreground">
-                            {(song.genre ?? 'Local library')} • {Math.floor(song.duration / 60)}:{String(song.duration % 60).padStart(2, '0')}
+                            {(song.genre ?? 'Local library')} / {Math.floor(song.duration / 60)}:{String(song.duration % 60).padStart(2, '0')}
                           </p>
                         </div>
                         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-105">
@@ -709,5 +777,112 @@ const HomePage = () => {
     </ScrollArea>
   );
 };
+
+function InsightTile({
+  label,
+  value,
+  detail,
+  valueClassName = 'text-base',
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{label}</p>
+      <p className={`mt-2 break-words font-semibold leading-tight text-foreground ${valueClassName}`}>{value}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function SonicGateway({
+  featured,
+  featuredCover,
+  lineup,
+  timeLabel,
+  weatherLabel,
+  ambientMode,
+  totalPlays,
+  onPlay,
+}: {
+  featured: Song | null;
+  featuredCover: string;
+  lineup: Song[];
+  timeLabel: string;
+  weatherLabel: string;
+  ambientMode: string;
+  totalPlays: number;
+  onPlay: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-background/55 shadow-[0_24px_80px_-52px_hsl(var(--primary)/0.75)]">
+      <img
+        src={featuredCover}
+        alt=""
+        className="absolute inset-0 h-full w-full scale-105 object-cover opacity-25 blur-xl"
+        onError={(event) => { (event.target as HTMLImageElement).src = '/image-1.jpeg'; }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/84 to-background/55" />
+
+      <div className="relative grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center md:p-5">
+        <div className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">
+            <span>GT Signal</span>
+            <span className="h-1 w-1 rounded-full bg-primary/70" />
+            <span>{timeLabel}</span>
+            <span className="h-1 w-1 rounded-full bg-primary/70" />
+            <span className="capitalize">{ambientMode}</span>
+          </div>
+          <h3 className="truncate text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+            {featured?.title ?? 'Your private music world'}
+          </h3>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            {featured ? `${featured.artist} / ${featured.album}` : 'Ready when your library is loaded'}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {lineup.slice(0, 5).map((song, index) => (
+              <div
+                key={song.id}
+                className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-card shadow-lg"
+                style={{ transform: `translateX(${index === 0 ? 0 : -index * 2}px)` }}
+              >
+                <SongCover song={song} alt={song.title} className="h-full w-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto] items-center gap-3 sm:grid-cols-1 sm:justify-items-end">
+          <div className="grid grid-cols-3 gap-2 text-center sm:w-48">
+            <SignalMetric label="Weather" value={weatherLabel} />
+            <SignalMetric label="Plays" value={`${totalPlays}`} />
+            <SignalMetric label="Stack" value={`${lineup.length}`} />
+          </div>
+          <button
+            type="button"
+            onClick={onPlay}
+            disabled={!featured}
+            className="sonic-play-button touch-manipulation flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_40px_-20px_hsl(var(--primary)/0.9)] transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+            aria-label="Play featured signal"
+          >
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignalMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 px-2 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-xs font-bold text-foreground">{value}</p>
+    </div>
+  );
+}
 
 export default HomePage;

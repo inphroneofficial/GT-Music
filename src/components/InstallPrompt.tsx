@@ -7,6 +7,8 @@ interface BIPEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+type NavigatorWithStandalone = Navigator & { standalone?: boolean };
+
 const DISMISS_KEY = 'gt-install-dismissed-v1';
 
 export function InstallPrompt() {
@@ -18,10 +20,10 @@ export function InstallPrompt() {
     if (localStorage.getItem(DISMISS_KEY)) return;
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as NavigatorWithStandalone).standalone === true;
     if (standalone) return;
 
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !('MSStream' in window);
 
     const handler = (e: Event) => {
       e.preventDefault();

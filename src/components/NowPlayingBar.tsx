@@ -44,23 +44,28 @@ export function NowPlayingBar() {
 
   return (
     <>
-      {/* MOBILE mini-bar — visible below md */}
+      {/* MOBILE mini-bar - visible below md */}
       <div
         className="fixed bottom-16 left-2 right-2 z-50 touch-pan-y md:hidden animate-slide-up sm:left-3 sm:right-3"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         {...swipeHandlers}
       >
-        <div className="glass-strong overflow-hidden rounded-[1.35rem] shadow-2xl ring-1 ring-white/5">
-          {/* Mini progress */}
-          <div className="h-0.5 bg-muted/30 relative">
+        <div className="relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-background/86 shadow-[0_18px_60px_-34px_hsl(var(--primary)/0.8)] ring-1 ring-white/5 backdrop-blur-2xl">
+          <SongCover
+            song={currentSong}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-16 blur-xl"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/88 to-background/70" />
+          <div className="relative h-0.5 bg-muted/30">
             <div className="absolute inset-y-0 left-0 btn-gradient" style={{ width: `${progress}%` }} />
           </div>
-          <div className="flex h-[66px] items-center gap-3 px-3.5">
+          <div className="relative flex h-[68px] items-center gap-3 px-3.5">
             <button onClick={() => setIsFullScreen(true)} className="tap-target touch-manipulation flex-shrink-0 rounded-xl" data-no-swipe="true">
               <SongCover
                 song={currentSong}
                 alt={currentSong.title}
-                className="w-10 h-10 rounded-lg object-cover"
+                className="h-11 w-11 rounded-xl object-cover shadow-lg ring-1 ring-white/10"
               />
             </button>
             <button
@@ -70,7 +75,10 @@ export function NowPlayingBar() {
               data-no-swipe="true"
             >
               <p className="truncate text-sm font-semibold text-foreground">{currentSong.title}</p>
-              <p className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{currentSong.artist}</p>
+              <span className="mt-1 flex items-center gap-2">
+                {isPlaying && <Equalizer playing={isPlaying} size="sm" />}
+                <span className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{currentSong.artist}</span>
+              </span>
             </button>
             <Button variant="ghost" size="icon" className="tap-target touch-manipulation h-10 w-10 rounded-full btn-press" onClick={handleLike}>
               <Heart className={`w-4 h-4 ${isLiked(currentSong.id) ? 'fill-primary text-primary' : 'text-muted-foreground'} ${heartAnim ? 'animate-heart-pop' : ''}`} />

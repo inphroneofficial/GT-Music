@@ -7,7 +7,10 @@ export interface Song {
   file: string;
   cover: string;
   genre?: string;
+  mood?: SongMood;
 }
+
+export type SongMood = 'melodies' | 'mass' | 'romantic' | 'emotional' | 'uplifting';
 
 export interface Album {
   name: string;

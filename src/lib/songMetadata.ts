@@ -10,6 +10,30 @@ export interface SongFileMetadata {
   coverUrl: string;
 }
 
+type MediaTagPicture = {
+  data?: number[] | Uint8Array;
+  format?: string;
+};
+
+type MediaTagResult = {
+  tags?: {
+    title?: string;
+    artist?: string;
+    album?: string;
+    picture?: MediaTagPicture;
+  };
+};
+
+type MediaTagReader = {
+  read: (
+    source: Blob,
+    handlers: {
+      onSuccess: (tag: MediaTagResult) => void;
+      onError: (error: unknown) => void;
+    },
+  ) => void;
+};
+
 const metadataCache = new Map<string, SongFileMetadata>();
 const inflight = new Map<string, Promise<SongFileMetadata>>();
 
@@ -26,21 +50,21 @@ function bytesToBase64(data: number[] | Uint8Array) {
   return window.btoa(binary);
 }
 
-function readRawTags(fileUrl: string) {
+function readRawTags(fileUrl: string): Promise<MediaTagResult> {
   return fetch(fileUrl)
     .then((response) => {
       if (!response.ok) throw new Error(`Failed to fetch ${fileUrl}`);
       return response.blob();
     })
-    .then((blob) => new Promise<any>((resolve, reject) => {
-      (jsmediatags as any).read(blob, {
-        onSuccess: (tag: any) => resolve(tag),
-        onError: (error: any) => reject(error),
+    .then((blob) => new Promise<MediaTagResult>((resolve, reject) => {
+      (jsmediatags as unknown as MediaTagReader).read(blob, {
+        onSuccess: resolve,
+        onError: reject,
       });
     }));
 }
 
-function extractCoverUrl(picture: any): string {
+function extractCoverUrl(picture?: MediaTagPicture): string {
   if (!picture?.data?.length) return SONG_PLACEHOLDER_COVER;
   const base64 = bytesToBase64(picture.data);
   const mime = picture.format || 'image/jpeg';

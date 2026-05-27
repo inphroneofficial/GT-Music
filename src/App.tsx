@@ -26,6 +26,7 @@ const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
 const LikedSongsPage = lazy(() => import("./pages/LikedSongsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const GenrePage = lazy(() => import("./pages/GenrePage"));
+const MoodPage = lazy(() => import("./pages/MoodPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -37,7 +38,7 @@ const AppLayout = () => {
   return (
     <SidebarProvider>
       {!splashDone && <SplashScreen onComplete={handleSplashComplete} />}
-      <div className={`flex min-h-[100dvh] w-full transition-opacity duration-500 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="flex min-h-[100dvh] w-full">
         {/* Sidebar hidden on mobile via CSS */}
         <div className="hidden md:block">
           <AppSidebar />
@@ -66,6 +67,8 @@ const AppLayout = () => {
                   <Route path="/liked" element={<LikedSongsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/genre/:name" element={<GenrePage />} />
+                  <Route path="/mood" element={<MoodPage />} />
+                  <Route path="/mood/:name" element={<MoodPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

@@ -49,12 +49,14 @@ export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay
       ms.setActionHandler('pause', () => onPause());
       ms.setActionHandler('previoustrack', () => onPrev());
       ms.setActionHandler('nexttrack', () => onNext());
-      ms.setActionHandler('seekto', (d: any) => {
-        if (typeof d.seekTime === 'number') onSeek(d.seekTime);
+      ms.setActionHandler('seekto', (details: MediaSessionActionDetails) => {
+        if (typeof details.seekTime === 'number') onSeek(details.seekTime);
       });
       ms.setActionHandler('seekbackward', null);
       ms.setActionHandler('seekforward', null);
-    } catch {}
+    } catch {
+      // Some browsers expose Media Session partially; ignore unsupported handlers.
+    }
     return () => {
       try {
         ms.setActionHandler('play', null);
@@ -64,7 +66,9 @@ export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay
         ms.setActionHandler('seekto', null);
         ms.setActionHandler('seekbackward', null);
         ms.setActionHandler('seekforward', null);
-      } catch {}
+      } catch {
+        // Ignore cleanup failures from partial Media Session implementations.
+      }
     };
   }, [onPlay, onPause, onNext, onPrev, onSeek, currentTime, duration]);
 
@@ -76,6 +80,8 @@ export function useMediaSession({ song, isPlaying, duration, currentTime, onPlay
         position: Math.min(currentTime, duration),
         playbackRate: 1,
       });
-    } catch {}
+    } catch {
+      // Safari and older Chromium builds can reject position updates.
+    }
   }, [currentTime, duration]);
 }

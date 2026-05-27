@@ -8,7 +8,8 @@
       "duration": 223,
       "file": "03 - Bhel Poori.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "uplifting"
     },
     {
       "id": "song-2",
@@ -18,7 +19,8 @@
       "duration": 238,
       "file": "05 - Naari Naari.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "romantic"
     },
     {
       "id": "song-3",
@@ -28,7 +30,8 @@
       "duration": 244,
       "file": "Aasa Pulla.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "romantic"
     },
     {
       "id": "song-4",
@@ -38,7 +41,8 @@
       "duration": 251,
       "file": "Ada_Bommale.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "romantic"
     },
     {
       "id": "song-5",
@@ -48,7 +52,8 @@
       "duration": 214,
       "file": "Mutta Kalakki.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "mass"
     },
     {
       "id": "song-6",
@@ -58,7 +63,8 @@
       "duration": 286,
       "file": "Oru Peru Varalaaru.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "mass"
     },
     {
       "id": "song-7",
@@ -68,7 +74,8 @@
       "duration": 232,
       "file": "Pavazha Malli (From _Think Indie_) - NaaSongs.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Indie"
+      "genre": "Indie",
+      "mood": "uplifting"
     },
     {
       "id": "song-8",
@@ -78,7 +85,8 @@
       "duration": 205,
       "file": "Raavana Mavandaa.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "mass"
     },
     {
       "id": "song-9",
@@ -88,7 +96,8 @@
       "duration": 241,
       "file": "Raga of Revenge (From DC) - Anirudh Ravichander.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Soundtrack"
+      "genre": "Soundtrack",
+      "mood": "emotional"
     },
     {
       "id": "song-10",
@@ -98,7 +107,8 @@
       "duration": 260,
       "file": "Thalapathy Kacheri.mp3",
       "cover": "covers/default.jpg",
-      "genre": "Tamil"
+      "genre": "Tamil",
+      "mood": "mass"
     }
   ]
 }

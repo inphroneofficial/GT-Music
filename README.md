@@ -10,7 +10,8 @@ It was created as an alternative to ad-heavy streaming apps that keep basic feat
 - Dynamic MP3 metadata reading with `jsmediatags`
 - Embedded cover-art support with placeholder fallback
 - Home screen with ambient mood sections, weather/time context, quotes, and personalized recommendations
-- Library sections for `All Songs`, `Albums`, `Artists`, `Liked Songs`, `Playlists`, `Recently Played`, `Most Played`, and `Downloaded`
+- `Your Mood` browsing for `Melodies`, `Mass`, `Romantic`, `Emotional`, and `Uplifting` listening lanes
+- Library sections for `All Songs`, `Your Mood`, `Albums`, `Artists`, `Liked Songs`, `Playlists`, `Recently Played`, `Most Played`, and `Downloaded`
 - Mobile-friendly player shell with mini-player, fullscreen player, queue, and lock-screen media session support
 - Theme switching, accent colors, EQ controls, bass boost, stereo widening, crossfade, fade-in, and playback-speed controls
 - Listening analytics such as recent activity and most-played tracking
@@ -86,6 +87,7 @@ Each manifest contains a `songs` array. Every entry can define:
 - `file`
 - `cover`
 - `genre`
+- `mood`
 
 Example:
 
@@ -98,9 +100,20 @@ Example:
   "duration": 240,
   "file": "My Song.mp3",
   "cover": "covers/default.jpg",
-  "genre": "Pop"
+  "genre": "Pop",
+  "mood": "uplifting"
 }
 ```
+
+Supported mood values:
+
+- `melodies`
+- `mass`
+- `romantic`
+- `emotional`
+- `uplifting`
+
+If `mood` is not provided, GT Music still tries to infer one from the song title, album, genre, and file name. For the most accurate `Your Mood` sections, add the `mood` field when adding new songs.
 
 The app can also enrich display data directly from MP3 metadata:
 
