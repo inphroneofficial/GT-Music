@@ -18,7 +18,7 @@ const LikedSongsPage = () => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="pb-32">
+      <div className="pb-8 md:pb-10">
         <div className="relative p-6 pb-8 flex items-end gap-6 animate-fade-in">
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-primary/5 to-background" />

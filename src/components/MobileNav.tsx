@@ -8,7 +8,7 @@ const tabs = [
   { icon: Sparkles, label: 'Mood', path: '/mood' },
   { icon: Library, label: 'Library', path: '/library' },
   { icon: Settings, label: 'Settings', path: '/settings' },
-  { icon: Music2, label: 'Playing', path: '/__now_playing__' },
+  { icon: Music2, label: 'Play', path: '/__now_playing__' },
 ];
 
 export function MobileNav() {

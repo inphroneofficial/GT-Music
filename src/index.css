@@ -5,6 +5,8 @@
 @layer base {
   html, body, #root {
     min-height: 100%;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   #root {
@@ -544,7 +546,8 @@
   @media (min-width: 768px) {
     .mood-scroll-rail {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
       overflow: visible;
       padding-right: 0;
       scroll-snap-type: none;
@@ -553,6 +556,42 @@
     .mood-scroll-rail > * {
       max-width: none !important;
       min-width: 0 !important;
+    }
+  }
+
+  .home-mood-rail {
+    display: flex !important;
+    gap: 0.9rem;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.6rem;
+    scroll-snap-type: x mandatory !important;
+  }
+
+  .home-mood-rail > * {
+    flex: 0 0 auto !important;
+    min-width: min(72vw, 17rem) !important;
+    max-width: min(72vw, 17rem) !important;
+  }
+
+  @media (min-width: 640px) {
+    .home-mood-rail > * {
+      min-width: 15rem !important;
+      max-width: 15rem !important;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .home-mood-rail > * {
+      min-width: 14.5rem !important;
+      max-width: 14.5rem !important;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .home-mood-rail > * {
+      min-width: 15.25rem !important;
+      max-width: 15.25rem !important;
     }
   }
 

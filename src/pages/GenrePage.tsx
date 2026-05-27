@@ -40,7 +40,7 @@ const GenrePage = () => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 pb-32">
+      <div className="p-6 pb-8 md:pb-10">
         {/* Header */}
         <div className={`rounded-3xl overflow-hidden mb-8 p-8 bg-gradient-to-br ${gradient} animate-fade-in`}>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">Genre</p>

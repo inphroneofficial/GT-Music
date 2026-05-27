@@ -51,7 +51,7 @@ const PlaylistPage = () => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="pb-32">
+      <div className="pb-8 md:pb-10">
         {/* Header */}
         <div className="relative p-6 pb-8 flex items-end gap-6 animate-fade-in">
           <div className="absolute inset-0 mesh-gradient" />

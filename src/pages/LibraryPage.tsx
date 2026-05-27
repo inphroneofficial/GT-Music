@@ -222,7 +222,7 @@ const LibraryPage = () => {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-36 md:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 md:px-6 md:pb-10">
         {activeSection === 'all' && (
           <VirtualizedSongList
             songs={allSongs}

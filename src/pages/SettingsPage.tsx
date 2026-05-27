@@ -30,7 +30,7 @@ const SettingsPage = () => {
   return (
     <ScrollArea className="h-full">
       <SEO title="Settings" description="Customize your GT Music experience - equalizer, playback, appearance, and more." path="/settings" />
-      <div className="mx-auto max-w-4xl px-4 pb-40 pt-4 md:px-6 md:pt-6">
+      <div className="mx-auto max-w-4xl px-4 pb-8 pt-4 md:px-6 md:pb-10 md:pt-6">
         <div className="mb-6 flex items-center justify-between gap-3 md:mb-8">
           <h1 className="flex items-center gap-3 text-2xl font-extrabold tracking-tight text-foreground animate-fade-in md:text-4xl">
             <SettingsIcon className="h-6 w-6 text-primary md:h-7 md:w-7" /> Settings

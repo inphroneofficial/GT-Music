@@ -48,7 +48,7 @@ const MoodPage = () => {
         description={selectedMeta ? `Play ${selectedMeta.label.toLowerCase()} songs from your GT Music library.` : 'Choose GT Music songs by mood.'}
         path={selectedMood ? `/mood/${selectedMood}` : '/mood'}
       />
-      <div className="max-w-full overflow-x-hidden p-4 pb-32 md:p-6">
+      <div className="max-w-full overflow-x-hidden p-4 pb-8 md:p-6 md:pb-10">
         <section className={`relative mb-6 overflow-hidden rounded-[1.7rem] border border-white/10 bg-gradient-to-br ${selectedMeta?.gradient ?? 'from-primary/20 via-orange-400/10 to-sky-400/10'} p-5 md:rounded-[2rem] md:p-8`}>
           <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
           <div className="relative max-w-3xl">
@@ -198,7 +198,7 @@ const MoodPage = () => {
 const MoodPageSkeleton = () => (
   <ScrollArea className="h-full">
     <SEO title="Your Mood" description="Choose GT Music songs by mood." path="/mood" />
-    <div className="max-w-full overflow-hidden p-4 pb-32 md:p-6">
+    <div className="max-w-full overflow-hidden p-4 pb-8 md:p-6 md:pb-10">
       <section className="mb-6 overflow-hidden rounded-[1.7rem] border border-border/30 bg-card/45 p-5 md:rounded-[2rem] md:p-8">
         <div className="mb-5 h-8 w-36 rounded-full bg-muted/50 shimmer" />
         <div className="mb-4 h-12 w-64 max-w-full rounded-2xl bg-muted/50 shimmer md:h-16" />

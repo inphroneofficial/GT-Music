@@ -33,7 +33,7 @@ const ArtistPage = () => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="pb-32">
+      <div className="pb-8 md:pb-10">
         <div className="relative flex items-end gap-6 p-6 pb-8 animate-fade-in">
           <div className="absolute inset-0 overflow-hidden">
             <img src={cover} alt="" className="h-full w-full scale-150 object-cover opacity-20 blur-[60px]" onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }} />

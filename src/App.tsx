@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { MusicProvider } from "@/contexts/MusicContext";
+import { MusicProvider, useMusic } from "@/contexts/MusicContext";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NowPlayingBar } from "@/components/NowPlayingBar";
 import { QueuePanel } from "@/components/QueuePanel";
@@ -34,17 +34,18 @@ const queryClient = new QueryClient();
 
 const AppLayout = () => {
   const [splashDone, setSplashDone] = useState(false);
+  const { currentSong } = useMusic();
   const handleSplashComplete = useCallback(() => setSplashDone(true), []);
 
   return (
     <SidebarProvider>
       {!splashDone && <SplashScreen onComplete={handleSplashComplete} />}
-      <div className="flex min-h-[100dvh] w-full">
+      <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden">
         {/* Sidebar hidden on mobile via CSS */}
         <div className="hidden md:block">
           <AppSidebar />
         </div>
-        <div className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden bg-background">
+        <div className="flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden bg-background">
           <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-border/40 bg-background/75 px-4 backdrop-blur-xl md:flex lg:px-6 pt-safe">
             <div className="flex w-full items-center justify-between gap-4">
               <SidebarTrigger className="tap-target rounded-full text-muted-foreground transition-colors hover:text-foreground">
@@ -55,7 +56,7 @@ const AppLayout = () => {
               </p>
             </div>
           </header>
-          <main className="flex-1 overflow-hidden pl-safe pr-safe pt-safe md:pt-0 pb-[8.75rem] md:pb-28">
+          <main className={`min-h-0 flex-1 overflow-hidden pl-safe pr-safe pt-safe md:pt-0 ${currentSong ? 'pb-[8.25rem] md:pb-24' : 'pb-16 md:pb-0'}`}>
             <AnimatedPage>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>

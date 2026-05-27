@@ -188,7 +188,7 @@ const SearchPage = () => {
   return (
     <ScrollArea className="h-full">
       <SEO title="Search" description="Search your GT Music library by song, mood, album, artist, or genre." path="/search" />
-      <div className="pb-32 p-4 md:p-6">
+      <div className="p-4 pb-8 md:p-6 md:pb-10">
         <div className="mb-5 animate-fade-in md:mb-6">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Library Intelligence</p>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">Search</h1>
