@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Shuffle, Sparkles } from 'lucide-react';
 import { useMusic } from '@/contexts/MusicContext';
@@ -7,19 +7,19 @@ import { SEO } from '@/components/SEO';
 import { SongRow } from '@/components/SongRow';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useHorizontalDragScroll } from '@/hooks/useHorizontalDragScroll';
 import { MOOD_META, MOOD_ORDER, getSongMood, groupSongsByMood, normalizeSongMood } from '@/lib/moods';
 
 const MoodPage = () => {
   const navigate = useNavigate();
   const { name } = useParams<{ name: string }>();
   const { allSongs, loading, playSong } = useMusic();
-  const moodRailRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef({
-    active: false,
-    moved: false,
-    startX: 0,
-    startScrollLeft: 0,
-  });
+  const {
+    ref: moodRailRef,
+    dragHandlers: moodRailDragHandlers,
+    scrollByPage: scrollMoodRail,
+    scrollToSelector: scrollToMood,
+  } = useHorizontalDragScroll<HTMLDivElement>();
 
   const selectedMood = normalizeSongMood(decodeURIComponent(name || ''));
   const selectedMeta = selectedMood ? MOOD_META[selectedMood] : null;
@@ -32,30 +32,10 @@ const MoodPage = () => {
 
   useEffect(() => {
     if (!selectedMood) return;
-
-    const rail = moodRailRef.current;
-    const activeCard = rail?.querySelector<HTMLElement>(`[data-mood-card="${selectedMood}"]`);
-    if (!rail || !activeCard) return;
-
-    const targetLeft = activeCard.offsetLeft - (rail.clientWidth - activeCard.clientWidth) / 2;
-
     window.requestAnimationFrame(() => {
-      rail.scrollTo({
-        left: Math.max(0, targetLeft),
-        behavior: 'smooth',
-      });
+      scrollToMood(`[data-mood-card="${selectedMood}"]`);
     });
-  }, [selectedMood]);
-
-  const scrollMoodRail = (direction: 'previous' | 'next') => {
-    const rail = moodRailRef.current;
-    if (!rail) return;
-
-    rail.scrollBy({
-      left: direction === 'next' ? rail.clientWidth * 0.82 : -rail.clientWidth * 0.82,
-      behavior: 'smooth',
-    });
-  };
+  }, [scrollToMood, selectedMood]);
 
   if (loading) {
     return <MoodPageSkeleton />;
@@ -145,49 +125,7 @@ const MoodPage = () => {
             <div
               ref={moodRailRef}
               className="mood-scroll-rail"
-              onClickCapture={(event) => {
-                if (!dragStateRef.current.moved) return;
-                event.preventDefault();
-                event.stopPropagation();
-                dragStateRef.current.moved = false;
-              }}
-              onPointerDown={(event) => {
-                const rail = moodRailRef.current;
-                if (!rail || event.pointerType === 'mouse') return;
-
-                dragStateRef.current = {
-                  active: true,
-                  moved: false,
-                  startX: event.clientX,
-                  startScrollLeft: rail.scrollLeft,
-                };
-                rail.setPointerCapture?.(event.pointerId);
-              }}
-              onPointerMove={(event) => {
-                const rail = moodRailRef.current;
-                const dragState = dragStateRef.current;
-                if (!rail || !dragState.active) return;
-
-                const deltaX = event.clientX - dragState.startX;
-                if (Math.abs(deltaX) > 5) {
-                  dragState.moved = true;
-                  rail.scrollLeft = dragState.startScrollLeft - deltaX;
-                }
-              }}
-              onPointerUp={(event) => {
-                const rail = moodRailRef.current;
-                const didMove = dragStateRef.current.moved;
-                dragStateRef.current.active = false;
-                rail?.releasePointerCapture?.(event.pointerId);
-                if (didMove) {
-                  window.setTimeout(() => {
-                    dragStateRef.current.moved = false;
-                  }, 140);
-                }
-              }}
-              onPointerCancel={() => {
-                dragStateRef.current.active = false;
-              }}
+              {...moodRailDragHandlers}
             >
               {MOOD_ORDER.map((item) => {
                 const group = moodGroups.find((entry) => entry.mood === item);

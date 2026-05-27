@@ -33,6 +33,7 @@ import { SongCover } from '@/components/SongCover';
 import { SEO } from '@/components/SEO';
 import { TypingText } from '@/components/TypingText';
 import { useHomeAmbient } from '@/hooks/useHomeAmbient';
+import { useHorizontalDragScroll } from '@/hooks/useHorizontalDragScroll';
 import { groupSongsByMood } from '@/lib/moods';
 import { resolveSongCoverPath } from '@/lib/songMetadata';
 import type { Song } from '@/types/music';
@@ -167,6 +168,10 @@ const HomePage = () => {
   }, [ambientMode, deferredSongs, weather?.mood]);
 
   const moodGroups = useMemo(() => groupSongsByMood(deferredSongs), [deferredSongs]);
+  const {
+    ref: homeMoodRailRef,
+    dragHandlers: homeMoodRailDragHandlers,
+  } = useHorizontalDragScroll<HTMLDivElement>();
 
   const mostPlayedSongs = useMemo(() => {
     const sorted = [...deferredSongs]
@@ -316,7 +321,7 @@ const HomePage = () => {
                     </button>
                   </div>
                   <div className="-mx-6 max-w-[100vw] px-6 xl:mx-0 xl:max-w-full xl:px-0">
-                    <div className="mood-scroll-rail xl:grid-cols-5">
+                    <div ref={homeMoodRailRef} className="mood-scroll-rail xl:grid-cols-5" {...homeMoodRailDragHandlers}>
                       {moodGroups.map((group) => (
                         <MoodCard
                           key={group.mood}

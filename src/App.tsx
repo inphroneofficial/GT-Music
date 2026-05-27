@@ -15,6 +15,7 @@ import { AnimatedPage } from "@/components/AnimatedPage";
 import { MobileNav } from "@/components/MobileNav";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { Menu } from "lucide-react";
 
 const Index = lazy(() => import("./pages/Index"));
@@ -80,6 +81,7 @@ const AppLayout = () => {
       <QueuePanel />
       <FullScreenPlayer />
       <MobileNav />
+      {splashDone && <NetworkStatusIndicator />}
       <InstallPrompt />
       {/* Keyboard shortcuts helper - hidden component */}
       <div className="fixed bottom-20 right-4 z-40 hidden md:block">
