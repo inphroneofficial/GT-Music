@@ -96,6 +96,8 @@ export function useHomeAmbient(): HomeAmbientState {
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [quoteNonce, setQuoteNonce] = useState(0);
   const [quote, setQuote] = useState<QuoteSnapshot>(() => getFallbackQuote());
+  const quoteDateKey = now.toDateString();
+  const quoteDaySeed = now.getDate();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -183,13 +185,13 @@ export function useHomeAmbient(): HomeAmbientState {
           source: 'api',
         });
       } catch {
-        if (!cancelled) setQuote(getFallbackQuote(quoteNonce + now.getDate()));
+        if (!cancelled) setQuote(getFallbackQuote(quoteNonce + quoteDaySeed));
       }
     };
 
     loadQuote();
     return () => { cancelled = true; };
-  }, [quoteNonce, now.toDateString()]);
+  }, [quoteNonce, quoteDateKey, quoteDaySeed]);
 
   const ambientMode = useMemo(() => getAmbientMode(now, weather), [now, weather]);
   const greeting = useMemo(() => getGreeting(now), [now]);

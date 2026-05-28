@@ -4,16 +4,23 @@
 
 @layer base {
   html, body, #root {
-    min-height: 100%;
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
     width: 100%;
+    overflow: hidden;
     overflow-x: hidden;
   }
 
   #root {
-    min-height: 100dvh;
+    isolation: isolate;
   }
 
   :root {
+    --app-height: 100dvh;
+    --app-width: 100vw;
+    --app-viewport-top: 0px;
+    --app-viewport-left: 0px;
+
     /* GT Music — Obsidian + Amber design system */
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
@@ -139,6 +146,7 @@
       radial-gradient(circle at top left, hsla(var(--primary) / 0.08), transparent 30%),
       linear-gradient(180deg, hsla(0 0% 100% / 0.02), transparent 30%);
     text-rendering: optimizeLegibility;
+    touch-action: manipulation;
     overscroll-behavior-y: none;
   }
 
@@ -801,6 +809,11 @@
 
   /* Minimum 44x44 tap target for mobile accessibility */
   .tap-target { min-width: 44px; min-height: 44px; }
+
+  .app-shell-height {
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
+  }
 
   .touch-manipulation {
     touch-action: manipulation;

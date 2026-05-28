@@ -10,12 +10,17 @@ interface AudioEngineOptions {
 }
 
 export function useAudioEngine(opts: AudioEngineOptions) {
+  const optsRef = useRef(opts);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
   const gainRef = useRef<GainNode | null>(null);
   const connectedRef = useRef(false);
+
+  useEffect(() => {
+    optsRef.current = opts;
+  }, [opts]);
 
   // Initialize audio element
   useEffect(() => {
@@ -25,9 +30,9 @@ export function useAudioEngine(opts: AudioEngineOptions) {
       audioRef.current.crossOrigin = 'anonymous';
     }
     const audio = audioRef.current;
-    const onTime = () => opts.onTimeUpdate(audio.currentTime);
-    const onDur = () => opts.onDurationChange(audio.duration || 0);
-    const onEnd = () => opts.onEnded();
+    const onTime = () => optsRef.current.onTimeUpdate(audio.currentTime);
+    const onDur = () => optsRef.current.onDurationChange(audio.duration || 0);
+    const onEnd = () => optsRef.current.onEnded();
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onDur);
     audio.addEventListener('ended', onEnd);
@@ -84,7 +89,7 @@ export function useAudioEngine(opts: AudioEngineOptions) {
       await ctxRef.current.resume();
     }
     await audio.play();
-    opts.onPlayStateChange(true);
+    optsRef.current.onPlayStateChange(true);
   }, [ensureAudioContext]);
 
   const resume = useCallback(async () => {
@@ -93,12 +98,12 @@ export function useAudioEngine(opts: AudioEngineOptions) {
       await ctxRef.current.resume();
     }
     await audio.play();
-    opts.onPlayStateChange(true);
+    optsRef.current.onPlayStateChange(true);
   }, []);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
-    opts.onPlayStateChange(false);
+    optsRef.current.onPlayStateChange(false);
   }, []);
 
   const seek = useCallback((time: number) => {

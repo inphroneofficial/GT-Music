@@ -67,10 +67,28 @@
           var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
           var isLight = theme === 'light' || (theme === 'system' && prefersLight);
           var root = document.documentElement;
+          var viewport = window.visualViewport;
+          var viewportHeight = Math.round(
+            (viewport && viewport.height) ||
+            window.innerHeight ||
+            document.documentElement.clientHeight ||
+            0
+          );
+          var viewportWidth = Math.round(
+            (viewport && viewport.width) ||
+            window.innerWidth ||
+            document.documentElement.clientWidth ||
+            0
+          );
+          if (viewportHeight) root.style.setProperty('--app-height', viewportHeight + 'px');
+          if (viewportWidth) root.style.setProperty('--app-width', viewportWidth + 'px');
+          root.style.setProperty('--app-viewport-top', ((viewport && viewport.offsetTop) || 0) + 'px');
+          root.style.setProperty('--app-viewport-left', ((viewport && viewport.offsetLeft) || 0) + 'px');
           root.classList.toggle('light', isLight);
           root.style.colorScheme = isLight ? 'light' : 'dark';
           root.style.backgroundColor = isLight ? '#fafafa' : '#0a0a0f';
-          document.write('<style>html,body,#root{background:' + (isLight ? '#fafafa' : '#0a0a0f') + ';min-height:100%}</style>');
+          var appHeight = viewportHeight ? viewportHeight + 'px' : '100dvh';
+          document.write('<style>html,body,#root{background:' + (isLight ? '#fafafa' : '#0a0a0f') + ';height:var(--app-height,' + appHeight + ');min-height:var(--app-height,' + appHeight + ');overflow:hidden}</style>');
         } catch {}
       })();
     </script>

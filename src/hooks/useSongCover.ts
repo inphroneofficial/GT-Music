@@ -25,6 +25,10 @@ export interface CoverResult {
 }
 
 export function useSongCoverState(song: Song | null | undefined): CoverResult {
+  const songId = song?.id;
+  const songCover = song?.cover;
+  const songFile = song?.file;
+
   const initial = (() => {
     if (!song) return { src: PLACEHOLDER, loading: false, resolved: false };
     if (coverCache.has(song.id)) return { src: coverCache.get(song.id)!, loading: false, resolved: true };
@@ -36,29 +40,33 @@ export function useSongCoverState(song: Song | null | undefined): CoverResult {
   const [state, setState] = useState<CoverResult>(initial);
 
   useEffect(() => {
-    if (!song) { setState({ src: PLACEHOLDER, loading: false, resolved: false }); return; }
-    const cached = coverCache.get(song.id);
+    if (!songId || !songFile) {
+      setState({ src: PLACEHOLDER, loading: false, resolved: false });
+      return;
+    }
+
+    const cached = coverCache.get(songId);
     if (cached) { setState({ src: cached, loading: false, resolved: true }); return; }
-    const explicitCover = getCoverUrl(song);
+    const explicitCover = songCover && hasCustomCover(songCover) ? resolveSongCoverPath(songCover) : null;
     if (explicitCover) {
       const url = explicitCover;
-      coverCache.set(song.id, url);
+      coverCache.set(songId, url);
       setState({ src: url, loading: false, resolved: true });
       return;
     }
 
     setState({ src: PLACEHOLDER, loading: true, resolved: false });
-    const fileUrl = resolveSongFilePath(song.file);
+    const fileUrl = resolveSongFilePath(songFile);
     let cancelled = false;
 
     const promise =
-      inflight.get(song.id) ??
+      inflight.get(songId) ??
       (() => {
         const p = extractEmbeddedCover(fileUrl)
-          .then((url) => { coverCache.set(song.id, url); return url; })
-          .catch(() => { coverCache.set(song.id, PLACEHOLDER); return PLACEHOLDER; })
-          .finally(() => inflight.delete(song.id));
-        inflight.set(song.id, p);
+          .then((url) => { coverCache.set(songId, url); return url; })
+          .catch(() => { coverCache.set(songId, PLACEHOLDER); return PLACEHOLDER; })
+          .finally(() => inflight.delete(songId));
+        inflight.set(songId, p);
         return p;
       })();
 
@@ -66,7 +74,7 @@ export function useSongCoverState(song: Song | null | undefined): CoverResult {
       if (!cancelled) setState({ src: url, loading: false, resolved: url !== PLACEHOLDER });
     });
     return () => { cancelled = true; };
-  }, [song?.id, song?.cover, song?.file]);
+  }, [songId, songCover, songFile]);
 
   return state;
 }

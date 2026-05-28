@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback } from "react";
+import { lazy, Suspense, useState, useCallback, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -32,20 +32,72 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+const useAppViewportSize = () => {
+  useEffect(() => {
+    let frame = 0;
+
+    const syncViewport = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const viewport = window.visualViewport;
+        const height = Math.max(
+          320,
+          Math.round(viewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight)
+        );
+        const width = Math.round(viewport?.width ?? window.innerWidth ?? document.documentElement.clientWidth);
+        const root = document.documentElement;
+
+        root.style.setProperty("--app-height", `${height}px`);
+        root.style.setProperty("--app-width", `${width}px`);
+        root.style.setProperty("--app-viewport-top", `${Math.round(viewport?.offsetTop ?? 0)}px`);
+        root.style.setProperty("--app-viewport-left", `${Math.round(viewport?.offsetLeft ?? 0)}px`);
+      });
+    };
+
+    syncViewport();
+
+    const viewport = window.visualViewport;
+    const settleTimers = [120, 360, 900, 1500].map((delay) => window.setTimeout(syncViewport, delay));
+
+    window.addEventListener("resize", syncViewport, { passive: true });
+    window.addEventListener("orientationchange", syncViewport, { passive: true });
+    window.addEventListener("focus", syncViewport, { passive: true });
+    window.addEventListener("pageshow", syncViewport, { passive: true });
+    document.addEventListener("visibilitychange", syncViewport);
+    viewport?.addEventListener("resize", syncViewport, { passive: true });
+    viewport?.addEventListener("scroll", syncViewport, { passive: true });
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      settleTimers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+      window.removeEventListener("focus", syncViewport);
+      window.removeEventListener("pageshow", syncViewport);
+      document.removeEventListener("visibilitychange", syncViewport);
+      viewport?.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+    };
+  }, []);
+};
+
 const AppLayout = () => {
   const [splashDone, setSplashDone] = useState(false);
   const { currentSong } = useMusic();
   const handleSplashComplete = useCallback(() => setSplashDone(true), []);
+  useAppViewportSize();
 
   return (
     <SidebarProvider>
       {!splashDone && <SplashScreen onComplete={handleSplashComplete} />}
-      <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden">
+      <div className="app-shell-height flex min-h-0 w-full overflow-hidden">
         {/* Sidebar hidden on mobile via CSS */}
         <div className="hidden md:block">
           <AppSidebar />
         </div>
-        <div className="flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden bg-background">
+        <div className="app-shell-height flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
           <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-border/40 bg-background/75 px-4 backdrop-blur-xl md:flex lg:px-6 pt-safe">
             <div className="flex w-full items-center justify-between gap-4">
               <SidebarTrigger className="tap-target rounded-full text-muted-foreground transition-colors hover:text-foreground">

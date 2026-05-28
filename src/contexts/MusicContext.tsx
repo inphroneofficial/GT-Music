@@ -596,7 +596,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       hardResumeCurrentTrack().catch(() => {});
     }
-  }, [addToRecent, androidChrome, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, iosSafari, preferNativeAudio, settings.playbackSpeed, transitionToSong, useEnhancedAudio, volume]);
+  }, [addToRecent, androidChrome, buildFallbackQueue, ensureAudio, ensureAudioEngine, ensureQueueSelection, getNextTrackCandidate, iosSafari, settings.playbackSpeed, transitionToSong, useEnhancedAudio, volume]);
 
   const togglePlay = useCallback(() => {
     const audio = ensureAudio();
@@ -1041,6 +1041,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     reorderQueue,
     repeat,
     seek,
+    setVolume,
     setSleepTimer,
     settings,
     shuffle,
