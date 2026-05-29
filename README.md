@@ -57,15 +57,17 @@ npm run test
 
 ## Music library structure
 
-GT Music currently loads songs from manifest files in:
+GT Music loads the full catalog from one manifest:
 
 - `public/songs/manifest.json`
-- `public/Melodies/manifest.json`
 
-Audio files live in:
+Audio files are organized by mood/type inside:
 
-- `public/songs/`
-- `public/Melodies/`
+- `public/songs/melodies/`
+- `public/songs/mass/`
+- `public/songs/romantic/`
+- `public/songs/emotional/`
+- `public/songs/uplifting/`
 
 Cover images can live in:
 
@@ -98,7 +100,7 @@ Example:
   "artist": "My Artist",
   "album": "My Album",
   "duration": 240,
-  "file": "My Song.mp3",
+  "file": "songs/uplifting/My Song.mp3",
   "cover": "covers/default.jpg",
   "genre": "Pop",
   "mood": "uplifting"
@@ -126,20 +128,16 @@ If embedded art is present, GT Music converts it into a base64 `data:` image URL
 
 ## Adding new songs
 
-### Option 1: Add to `public/songs`
+### Add to the mood folders
 
-1. Put the audio files inside `public/songs/`
-2. Add entries to `public/songs/manifest.json`
-3. Optionally place custom covers in `public/songs/covers/`
-
-### Option 2: Add to `public/Melodies`
-
-1. Put the audio files inside `public/Melodies/`
-2. Add entries to `public/Melodies/manifest.json`
+1. Put the audio files inside the matching folder under `public/songs/`
+2. Use `melodies`, `mass`, `romantic`, `emotional`, or `uplifting`
+3. Add entries to `public/songs/manifest.json`
+4. Optionally place custom covers in `public/songs/covers/`
 
 Notes:
 
-- Use the exact filename in the `file` field
+- Use the exact folder and filename in the `file` field, for example `songs/romantic/My Song.mp3`
 - If your MP3 already contains good metadata and album art, GT Music can read that dynamically
 - Manifest values act as a reliable fallback when tags are missing
 

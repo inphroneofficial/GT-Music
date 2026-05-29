@@ -249,25 +249,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [settings.reducedMotion]);
 
   useEffect(() => {
-    Promise.allSettled([
-      fetch('/songs/manifest.json').then((response) => response.json()),
-      fetch('/Melodies/manifest.json').then((response) => response.ok ? response.json() : { songs: [] }),
-    ])
-      .then(async ([songsResult, melodiesResult]) => {
-        const manifestSongs = songsResult.status === 'fulfilled' ? songsResult.value.songs ?? [] : [];
-        const melodiesSongs = melodiesResult.status === 'fulfilled' ? melodiesResult.value.songs ?? [] : [];
-        const mergedSongs: Song[] = [...manifestSongs, ...melodiesSongs].map(normalizeLibrarySong);
+    fetch('/songs/manifest.json')
+      .then((response) => {
+        if (!response.ok) throw new Error('Unable to load songs manifest');
+        return response.json();
+      })
+      .then((manifest) => {
+        const mergedSongs: Song[] = (manifest.songs ?? []).map(normalizeLibrarySong);
         setAllSongs(mergedSongs);
         setLoading(false);
-
-        const enrichedSongs = await Promise.all(
-          mergedSongs.map(async (song) => {
-            const metadata = await readSongFileMetadata(resolveSongFilePath(song.file));
-            return applyMetadataToSong(song, metadata);
-          }),
-        );
-
-        setAllSongs(enrichedSongs);
       })
       .catch(() => setLoading(false));
   }, []);

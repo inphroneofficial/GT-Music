@@ -101,7 +101,8 @@ export async function readSongFileMetadata(fileUrl: string): Promise<SongFileMet
 export function resolveSongFilePath(file: string): string {
   if (!file) return '';
   if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('/')) return file;
-  if (file.includes('/')) return `/${file}`;
+  if (file.startsWith('songs/')) return `/${file}`;
+  if (file.includes('/')) return `/songs/${file}`;
   return `/songs/${file}`;
 }
 
@@ -115,6 +116,6 @@ export function resolveSongCoverPath(cover: string | undefined): string {
   if (cover.startsWith('data:') || cover.startsWith('blob:') || cover.startsWith('http://') || cover.startsWith('https://') || cover.startsWith('/')) {
     return cover;
   }
-  if (cover.startsWith('Melodies/') || cover.startsWith('songs/')) return `/${cover}`;
+  if (cover.startsWith('songs/')) return `/${cover}`;
   return `/songs/${cover}`;
 }
