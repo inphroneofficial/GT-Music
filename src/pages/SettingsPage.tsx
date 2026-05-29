@@ -1,11 +1,13 @@
 import {
   AudioLines,
   Download,
+  FolderOpen,
   Gauge,
   Headphones,
   Monitor,
   Moon,
   Palette,
+  RefreshCw,
   Settings as SettingsIcon,
   SlidersHorizontal,
   Sparkles,
@@ -13,6 +15,7 @@ import {
   Volume2,
   Waves,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useMusic } from '@/contexts/MusicContext';
 import type { AccentColor, ThemeMode } from '@/types/music';
 import { ACCENT_COLORS, EQ_PRESETS, SPEED_OPTIONS } from '@/types/music';
@@ -24,8 +27,26 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SEO } from '@/components/SEO';
 
 const SettingsPage = () => {
-  const { settings, updateSettings, preferNativeAudio } = useMusic();
+  const { settings, updateSettings, preferNativeAudio, allSongs, scanLibrary } = useMusic();
   const activePreset = EQ_PRESETS.find((preset) => preset.name === settings.eqPreset);
+  const [scanState, setScanState] = useState<'idle' | 'scanning' | 'done'>('idle');
+  const [scanMessage, setScanMessage] = useState('Drop MP3s into a mood folder, then scan to refresh the app.');
+
+  const handleScanSongs = async () => {
+    setScanState('scanning');
+    setScanMessage('Scanning mood folders...');
+    try {
+      const result = await scanLibrary();
+      setScanMessage(result.mode === 'dev-scan'
+        ? `${result.total} songs ready. ${result.added} added, ${result.removed} removed, ${result.moved} organized.`
+        : `${result.total} songs loaded from manifest. Run npm run scan:songs for new local files outside dev mode.`
+      );
+      setScanState('done');
+    } catch {
+      setScanMessage('Scan could not complete. Run npm run scan:songs and refresh the app.');
+      setScanState('idle');
+    }
+  };
 
   return (
     <ScrollArea className="h-full">
@@ -41,6 +62,38 @@ const SettingsPage = () => {
         </div>
 
         <div className="space-y-5">
+          <section className="animate-fade-in" style={{ animationDelay: '25ms' }}>
+            <div className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-card/60 p-4 shadow-[0_24px_80px_hsl(var(--primary)/0.12)] md:p-5">
+              <div className="pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-primary/20 blur-3xl" />
+              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-3 flex items-center gap-2">
+                    <FolderOpen className="h-5 w-5 text-primary" />
+                    <h2 className="text-base font-bold text-foreground md:text-lg">Music Library Scanner</h2>
+                  </div>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Add MP3s inside <span className="font-semibold text-foreground">public/songs/melodies</span>, <span className="font-semibold text-foreground">mass</span>, <span className="font-semibold text-foreground">romantic</span>, <span className="font-semibold text-foreground">emotional</span>, or <span className="font-semibold text-foreground">uplifting</span>.
+                  </p>
+                </div>
+                <button
+                  onClick={handleScanSongs}
+                  disabled={scanState === 'scanning'}
+                  className="tap-target btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] disabled:pointer-events-none disabled:opacity-70"
+                >
+                  <RefreshCw className={`h-4 w-4 ${scanState === 'scanning' ? 'animate-spin' : ''}`} />
+                  {scanState === 'scanning' ? 'Scanning...' : 'Scan Songs'}
+                </button>
+              </div>
+              <div className="relative mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <MetricCard label="Catalog" value={`${allSongs.length} songs`} />
+                <MetricCard label="Folders" value="5 moods" />
+                <MetricCard label="Mode" value={scanState === 'scanning' ? 'Scanning' : 'Ready'} />
+                <MetricCard label="Source" value="Manifest" />
+              </div>
+              <p className="relative mt-3 text-xs leading-5 text-muted-foreground">{scanMessage}</p>
+            </div>
+          </section>
+
           <section className="animate-fade-in" style={{ animationDelay: '50ms' }}>
             <div className="rounded-[2rem] border border-border/30 bg-card/50 p-4 md:p-5">
               <div className="mb-4 flex items-center gap-2">

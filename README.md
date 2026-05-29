@@ -53,6 +53,7 @@ npm run build
 npm run preview
 npm run lint
 npm run test
+npm run scan:songs
 ```
 
 ## Music library structure
@@ -132,12 +133,15 @@ If embedded art is present, GT Music converts it into a base64 `data:` image URL
 
 1. Put the audio files inside the matching folder under `public/songs/`
 2. Use `melodies`, `mass`, `romantic`, `emotional`, or `uplifting`
-3. Add entries to `public/songs/manifest.json`
+3. Run `npm run scan:songs`, or open Settings in dev mode and click **Scan Songs**
 4. Optionally place custom covers in `public/songs/covers/`
 
 Notes:
 
 - Use the exact folder and filename in the `file` field, for example `songs/romantic/My Song.mp3`
+- If you drop MP3s directly inside `public/songs/`, the scanner will infer the mood and move them into a mood folder
+- The in-app **Scan Songs** button can update the manifest instantly while running the local Vite dev server
+- On a deployed static app, new files in `public/` need `npm run scan:songs` and a redeploy because browsers cannot write to the deployed filesystem
 - If your MP3 already contains good metadata and album art, GT Music can read that dynamically
 - Manifest values act as a reliable fallback when tags are missing
 

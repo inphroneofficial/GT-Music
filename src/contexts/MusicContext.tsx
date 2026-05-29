@@ -35,6 +35,7 @@ interface MusicContextType {
   preferNativeAudio: boolean;
   allSongs: Song[];
   loading: boolean;
+  scanLibrary: () => Promise<LibraryScanResult>;
   likedSongIds: string[];
   playlists: Playlist[];
   recentlyPlayed: string[];
@@ -69,6 +70,15 @@ interface MusicContextType {
   setIsFullScreen: (v: boolean) => void;
   isQueueOpen: boolean;
   setIsQueueOpen: (v: boolean) => void;
+}
+
+interface LibraryScanResult {
+  total: number;
+  added: number;
+  removed: number;
+  moved: number;
+  mode: 'dev-scan' | 'manifest-refresh';
+  message: string;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -207,6 +217,25 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [androidChrome] = useState(() => isAndroidChrome());
   const useEnhancedAudio = useMemo(() => shouldUseEnhancedAudio(settings, preferNativeAudio), [settings, preferNativeAudio]);
 
+  const applyManifestSongs = useCallback((songs: Song[]) => {
+    const normalizedSongs = songs.map(normalizeLibrarySong);
+    setAllSongs(normalizedSongs);
+    setCurrentSong((existing) => {
+      if (!existing) return existing;
+      return normalizedSongs.find((song) => song.id === existing.id) ?? existing;
+    });
+    setQueue((existing) => existing.map((song) => normalizedSongs.find((nextSong) => nextSong.id === song.id) ?? song));
+    return normalizedSongs;
+  }, []);
+
+  const loadSongsManifest = useCallback(async (bustCache = false) => {
+    const manifestUrl = `/songs/manifest.json${bustCache ? `?v=${Date.now()}` : ''}`;
+    const response = await fetch(manifestUrl, { cache: bustCache ? 'no-store' : 'default' });
+    if (!response.ok) throw new Error('Unable to load songs manifest');
+    const manifest = await response.json();
+    return applyManifestSongs(manifest.songs ?? []);
+  }, [applyManifestSongs]);
+
   useEffect(() => {
     currentSongRef.current = currentSong;
   }, [currentSong]);
@@ -249,18 +278,64 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [settings.reducedMotion]);
 
   useEffect(() => {
-    fetch('/songs/manifest.json')
-      .then((response) => {
-        if (!response.ok) throw new Error('Unable to load songs manifest');
-        return response.json();
-      })
-      .then((manifest) => {
-        const mergedSongs: Song[] = (manifest.songs ?? []).map(normalizeLibrarySong);
-        setAllSongs(mergedSongs);
+    loadSongsManifest()
+      .then(() => {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [loadSongsManifest]);
+
+  const scanLibrary = useCallback(async (): Promise<LibraryScanResult> => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/scan-songs?v=${Date.now()}`, {
+        method: 'POST',
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        throw new Error('Scan endpoint unavailable');
+      }
+
+      const result = await response.json();
+      const nextSongs = Array.isArray(result.songs)
+        ? applyManifestSongs(result.songs)
+        : await loadSongsManifest(true);
+
+      const summary = {
+        total: nextSongs.length,
+        added: Number(result.added ?? 0),
+        removed: Number(result.removed ?? 0),
+        moved: Number(result.moved ?? 0),
+        mode: 'dev-scan' as const,
+        message: `Library scanned: ${nextSongs.length} songs ready.`,
+      };
+
+      toast.success(summary.message, {
+        description: `${summary.added} added, ${summary.removed} removed, ${summary.moved} organized.`,
+      });
+
+      return summary;
+    } catch {
+      const nextSongs = await loadSongsManifest(true);
+      const summary = {
+        total: nextSongs.length,
+        added: 0,
+        removed: 0,
+        moved: 0,
+        mode: 'manifest-refresh' as const,
+        message: `Manifest refreshed: ${nextSongs.length} songs loaded.`,
+      };
+
+      toast.info('Manifest refreshed', {
+        description: 'For newly dropped files, run npm run scan:songs locally or use Scan Songs while the Vite dev server is running.',
+      });
+
+      return summary;
+    } finally {
+      setLoading(false);
+    }
+  }, [applyManifestSongs, loadSongsManifest]);
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -963,6 +1038,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     preferNativeAudio,
     allSongs,
     loading,
+    scanLibrary,
     likedSongIds,
     playlists,
     recentlyPlayed,
@@ -1030,6 +1106,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     renamePlaylist,
     reorderQueue,
     repeat,
+    scanLibrary,
     seek,
     setVolume,
     setSleepTimer,
