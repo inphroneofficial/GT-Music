@@ -42,17 +42,22 @@ const useAppViewportSize = () => {
       frame = window.requestAnimationFrame(() => {
         frame = 0;
         const viewport = window.visualViewport;
+        const offsetTop = Math.round(viewport?.offsetTop ?? 0);
+        const offsetLeft = Math.round(viewport?.offsetLeft ?? 0);
         const height = Math.max(
           320,
           Math.round(viewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight)
         );
         const width = Math.round(viewport?.width ?? window.innerWidth ?? document.documentElement.clientWidth);
+        const layoutHeight = window.innerHeight || document.documentElement.clientHeight || height;
+        const bottomGap = Math.max(0, Math.round(layoutHeight - height - offsetTop));
         const root = document.documentElement;
 
         root.style.setProperty("--app-height", `${height}px`);
         root.style.setProperty("--app-width", `${width}px`);
-        root.style.setProperty("--app-viewport-top", `${Math.round(viewport?.offsetTop ?? 0)}px`);
-        root.style.setProperty("--app-viewport-left", `${Math.round(viewport?.offsetLeft ?? 0)}px`);
+        root.style.setProperty("--app-viewport-top", `${offsetTop}px`);
+        root.style.setProperty("--app-viewport-left", `${offsetLeft}px`);
+        root.style.setProperty("--app-bottom-gap", `${bottomGap}px`);
       });
     };
 

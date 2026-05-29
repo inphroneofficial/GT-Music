@@ -18,8 +18,8 @@ export function MobileNav() {
   const progress = duration ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[60] md:hidden">
-      <div className="relative border-t border-border/30 bg-background/92 backdrop-blur-2xl" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <nav className="mobile-bottom-dock fixed left-0 right-0 z-[60] md:hidden">
+      <div className="mobile-bottom-surface relative border-t border-border/30 bg-background/92 backdrop-blur-2xl">
         {currentSong && (
           <div className="absolute inset-x-0 top-0 h-px bg-muted/40">
             <div

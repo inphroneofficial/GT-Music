@@ -46,7 +46,7 @@ export function NowPlayingBar() {
     <>
       {/* MOBILE mini-bar - visible below md */}
       <div
-        className="fixed bottom-16 left-2 right-2 z-50 touch-pan-y md:hidden animate-slide-up sm:left-3 sm:right-3"
+        className="mobile-player-dock fixed left-2 right-2 z-50 touch-pan-y md:hidden animate-slide-up sm:left-3 sm:right-3"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         {...swipeHandlers}
       >

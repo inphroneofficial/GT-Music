@@ -20,6 +20,8 @@
     --app-width: 100vw;
     --app-viewport-top: 0px;
     --app-viewport-left: 0px;
+    --app-bottom-gap: 0px;
+    --mobile-bottom-bleed: max(env(safe-area-inset-bottom, 0px), var(--app-bottom-gap, 0px));
 
     /* GT Music — Obsidian + Amber design system */
     --background: 240 10% 4%;
@@ -813,6 +815,18 @@
   .app-shell-height {
     height: var(--app-height, 100dvh);
     min-height: var(--app-height, 100dvh);
+  }
+
+  .mobile-bottom-dock {
+    bottom: calc(-1 * var(--mobile-bottom-bleed, 0px));
+  }
+
+  .mobile-bottom-surface {
+    padding-bottom: var(--mobile-bottom-bleed, env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-player-dock {
+    bottom: calc(4rem - var(--mobile-bottom-bleed, 0px));
   }
 
   .touch-manipulation {

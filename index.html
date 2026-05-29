@@ -80,10 +80,15 @@
             document.documentElement.clientWidth ||
             0
           );
+          var viewportTop = Math.round((viewport && viewport.offsetTop) || 0);
+          var viewportLeft = Math.round((viewport && viewport.offsetLeft) || 0);
+          var layoutHeight = window.innerHeight || document.documentElement.clientHeight || viewportHeight;
+          var bottomGap = Math.max(0, Math.round(layoutHeight - viewportHeight - viewportTop));
           if (viewportHeight) root.style.setProperty('--app-height', viewportHeight + 'px');
           if (viewportWidth) root.style.setProperty('--app-width', viewportWidth + 'px');
-          root.style.setProperty('--app-viewport-top', ((viewport && viewport.offsetTop) || 0) + 'px');
-          root.style.setProperty('--app-viewport-left', ((viewport && viewport.offsetLeft) || 0) + 'px');
+          root.style.setProperty('--app-viewport-top', viewportTop + 'px');
+          root.style.setProperty('--app-viewport-left', viewportLeft + 'px');
+          root.style.setProperty('--app-bottom-gap', bottomGap + 'px');
           root.classList.toggle('light', isLight);
           root.style.colorScheme = isLight ? 'light' : 'dark';
           root.style.backgroundColor = isLight ? '#fafafa' : '#0a0a0f';
