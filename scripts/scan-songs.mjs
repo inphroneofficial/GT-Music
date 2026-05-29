@@ -202,6 +202,234 @@ function uniqueTargetPath(folderPath, fileName) {
   return candidate;
 }
 
+function readSyncSafeInteger(buffer, offset) {
+  return (
+    ((buffer[offset] & 0x7f) << 21) |
+    ((buffer[offset + 1] & 0x7f) << 14) |
+    ((buffer[offset + 2] & 0x7f) << 7) |
+    (buffer[offset + 3] & 0x7f)
+  );
+}
+
+function getId3v2Size(filePath) {
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const header = Buffer.alloc(10);
+    const bytesRead = fs.readSync(fd, header, 0, header.length, 0);
+    if (bytesRead < 10 || header.toString('latin1', 0, 3) !== 'ID3') return 0;
+    const hasFooter = (header[5] & 0x10) !== 0;
+    return 10 + readSyncSafeInteger(header, 6) + (hasFooter ? 10 : 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function readAudioWindow(filePath, startOffset) {
+  const stat = fs.statSync(filePath);
+  const length = Math.min(128 * 1024, Math.max(0, stat.size - startOffset));
+  const buffer = Buffer.alloc(length);
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const bytesRead = fs.readSync(fd, buffer, 0, length, startOffset);
+    return { buffer: buffer.subarray(0, bytesRead), fileSize: stat.size };
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+const BITRATE_TABLE = {
+  mpeg1: {
+    layer1: [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448],
+    layer2: [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384],
+    layer3: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320],
+  },
+  mpeg2: {
+    layer1: [0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256],
+    layer2: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160],
+    layer3: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160],
+  },
+};
+
+const SAMPLE_RATE_TABLE = {
+  mpeg1: [44100, 48000, 32000],
+  mpeg2: [22050, 24000, 16000],
+  mpeg25: [11025, 12000, 8000],
+};
+
+function parseMp3FrameHeader(buffer, offset) {
+  if (offset + 4 > buffer.length) return null;
+  const first = buffer[offset];
+  const second = buffer[offset + 1];
+  const third = buffer[offset + 2];
+  const fourth = buffer[offset + 3];
+
+  if (first !== 0xff || (second & 0xe0) !== 0xe0) return null;
+
+  const versionBits = (second >> 3) & 0x03;
+  const layerBits = (second >> 1) & 0x03;
+  const bitrateIndex = (third >> 4) & 0x0f;
+  const sampleRateIndex = (third >> 2) & 0x03;
+  const padding = (third >> 1) & 0x01;
+  const channelMode = (fourth >> 6) & 0x03;
+
+  if (versionBits === 1 || layerBits === 0 || bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3) {
+    return null;
+  }
+
+  const version = versionBits === 3 ? 'mpeg1' : versionBits === 2 ? 'mpeg2' : 'mpeg25';
+  const layer = layerBits === 3 ? 'layer1' : layerBits === 2 ? 'layer2' : 'layer3';
+  const bitrateVersion = version === 'mpeg1' ? 'mpeg1' : 'mpeg2';
+  const bitrate = BITRATE_TABLE[bitrateVersion][layer][bitrateIndex];
+  const sampleRate = SAMPLE_RATE_TABLE[version][sampleRateIndex];
+  if (!bitrate || !sampleRate) return null;
+
+  const samplesPerFrame = layer === 'layer1'
+    ? 384
+    : layer === 'layer2'
+      ? 1152
+      : version === 'mpeg1'
+        ? 1152
+        : 576;
+
+  const frameSize = layer === 'layer1'
+    ? Math.floor(((12 * bitrate * 1000) / sampleRate + padding) * 4)
+    : layer === 'layer3' && version !== 'mpeg1'
+      ? Math.floor((72 * bitrate * 1000) / sampleRate + padding)
+      : Math.floor((144 * bitrate * 1000) / sampleRate + padding);
+
+  return {
+    version,
+    layer,
+    bitrate,
+    sampleRate,
+    samplesPerFrame,
+    frameSize,
+    isMono: channelMode === 3,
+  };
+}
+
+function readUInt32BEAt(buffer, offset) {
+  if (offset + 4 > buffer.length) return 0;
+  return buffer.readUInt32BE(offset);
+}
+
+function getVbrDuration(buffer, frameOffset, header) {
+  const sideInfoSize = header.layer === 'layer3'
+    ? header.version === 'mpeg1'
+      ? header.isMono ? 17 : 32
+      : header.isMono ? 9 : 17
+    : 0;
+  const xingOffset = frameOffset + 4 + sideInfoSize;
+  const xing = buffer.toString('latin1', xingOffset, xingOffset + 4);
+
+  if (xing === 'Xing' || xing === 'Info') {
+    const flags = readUInt32BEAt(buffer, xingOffset + 4);
+    if ((flags & 0x01) !== 0) {
+      const frames = readUInt32BEAt(buffer, xingOffset + 8);
+      if (frames > 0) return (frames * header.samplesPerFrame) / header.sampleRate;
+    }
+  }
+
+  const vbriOffset = frameOffset + 4 + 32;
+  const vbri = buffer.toString('latin1', vbriOffset, vbriOffset + 4);
+  if (vbri === 'VBRI') {
+    const frames = readUInt32BEAt(buffer, vbriOffset + 14);
+    if (frames > 0) return (frames * header.samplesPerFrame) / header.sampleRate;
+  }
+
+  return 0;
+}
+
+function estimateMp3Duration(filePath) {
+  try {
+    const startOffset = getId3v2Size(filePath);
+    const { buffer, fileSize } = readAudioWindow(filePath, startOffset);
+
+    for (let offset = 0; offset < buffer.length - 4; offset += 1) {
+      const header = parseMp3FrameHeader(buffer, offset);
+      if (!header || header.frameSize <= 0) continue;
+
+      const nextHeader = parseMp3FrameHeader(buffer, offset + header.frameSize);
+      if (!nextHeader && offset + header.frameSize + 4 < buffer.length) continue;
+
+      const vbrDuration = getVbrDuration(buffer, offset, header);
+      if (vbrDuration > 0) return Math.round(vbrDuration);
+
+      const audioBytes = Math.max(0, fileSize - startOffset - offset);
+      return Math.round((audioBytes * 8) / (header.bitrate * 1000));
+    }
+  } catch {
+    return 0;
+  }
+
+  return 0;
+}
+
+function estimateMp4Duration(filePath) {
+  try {
+    const buffer = fs.readFileSync(filePath);
+    if (buffer.length < 12 || buffer.toString('latin1', 4, 8) !== 'ftyp') return 0;
+
+    const findDuration = (start, end) => {
+      let offset = start;
+      while (offset + 8 <= end) {
+        let size = buffer.readUInt32BE(offset);
+        const type = buffer.toString('latin1', offset + 4, offset + 8);
+        let headerSize = 8;
+
+        if (size === 1) {
+          if (offset + 16 > end) return 0;
+          const largeSize = buffer.readBigUInt64BE(offset + 8);
+          if (largeSize > BigInt(Number.MAX_SAFE_INTEGER)) return 0;
+          size = Number(largeSize);
+          headerSize = 16;
+        } else if (size === 0) {
+          size = end - offset;
+        }
+
+        const boxEnd = offset + size;
+        if (size < headerSize || boxEnd > end) return 0;
+
+        if (type === 'mvhd') {
+          const version = buffer[offset + headerSize];
+          if (version === 1) {
+            const timescaleOffset = offset + headerSize + 4 + 16;
+            const durationOffset = timescaleOffset + 4;
+            if (durationOffset + 8 > boxEnd) return 0;
+            const timescale = buffer.readUInt32BE(timescaleOffset);
+            const duration = Number(buffer.readBigUInt64BE(durationOffset));
+            return timescale > 0 ? duration / timescale : 0;
+          }
+
+          const timescaleOffset = offset + headerSize + 4 + 8;
+          const durationOffset = timescaleOffset + 4;
+          if (durationOffset + 4 > boxEnd) return 0;
+          const timescale = buffer.readUInt32BE(timescaleOffset);
+          const duration = buffer.readUInt32BE(durationOffset);
+          return timescale > 0 ? duration / timescale : 0;
+        }
+
+        if (['moov', 'trak', 'mdia', 'minf', 'stbl'].includes(type)) {
+          const nestedDuration = findDuration(offset + headerSize, boxEnd);
+          if (nestedDuration > 0) return nestedDuration;
+        }
+
+        offset = boxEnd;
+      }
+
+      return 0;
+    };
+
+    return Math.round(findDuration(0, buffer.length));
+  } catch {
+    return 0;
+  }
+}
+
+function estimateAudioDuration(filePath) {
+  return estimateMp4Duration(filePath) || estimateMp3Duration(filePath);
+}
+
 export function scanSongsLibrary({ projectRoot = process.cwd() } = {}) {
   const songsRoot = path.resolve(projectRoot, 'public', 'songs');
   if (!fs.existsSync(songsRoot)) {
@@ -256,9 +484,11 @@ export function scanSongsLibrary({ projectRoot = process.cwd() } = {}) {
   const usedIds = new Set();
   const songs = finalFiles.map((relative, index) => {
     const fileName = path.basename(relative);
+    const filePath = path.join(resolvedRoot, relative);
     const previous = previousByBaseName.get(fileName.toLowerCase());
     const mood = relative.split('/')[0];
     const title = previous?.title || cleanTitle(fileName);
+    const duration = estimateAudioDuration(filePath) || previous?.duration || 0;
     let id = previous?.id || `${mood}-${slugify(title)}`;
     if (usedIds.has(id)) id = `${id}-${index + 1}`;
     usedIds.add(id);
@@ -270,7 +500,7 @@ export function scanSongsLibrary({ projectRoot = process.cwd() } = {}) {
       album: previous?.album && !/collection/i.test(previous.album)
         ? previous.album
         : `${MOOD_META[mood].label} Collection`,
-      duration: previous?.duration || 0,
+      duration,
       file: `songs/${relative}`,
       cover: previous?.cover || 'covers/default.jpg',
       genre: previous?.genre || MOOD_META[mood].genre,
