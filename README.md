@@ -4,6 +4,19 @@ GT Music is a premium personal music player built for people who want control ov
 
 It was created as an alternative to ad-heavy streaming apps that keep basic features behind subscriptions, push unwanted recommendations, and make your own library feel secondary. GT Music focuses on your songs, your mood, your playlists, and your way of listening.
 
+## Project snapshot
+
+- Built as a personal cloud-style music player, not a Spotify clone
+- Visible git build window: May 19, 2026 to May 29, 2026
+- Current catalog: 164 songs and about 11.9 hours of music
+- App/script/config size before documentation update: about 15,404 lines
+- Source files: 110
+- Component files: 75
+- Pages: 11
+- Runtime dependencies: 51
+- Dev dependencies: 21
+- Detailed project report: [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md)
+
 ## What GT Music includes
 
 - Personal local-library playback with a polished app-style UI
@@ -16,6 +29,8 @@ It was created as an alternative to ad-heavy streaming apps that keep basic feat
 - Theme switching, accent colors, EQ controls, bass boost, stereo widening, crossfade, fade-in, and playback-speed controls
 - Listening analytics such as recent activity and most-played tracking
 - PWA-ready install support for a more native feel
+- Local song scanner that updates the manifest from mood folders
+- Real duration extraction for MP3 and MP4/AAC-style files renamed as `.mp3`
 
 ## Why this app exists
 
@@ -38,6 +53,14 @@ So this app takes the opposite approach: a personal player that feels cinematic,
 - React Router
 - TanStack Query
 - `jsmediatags` for reading song metadata
+- Media Session API
+- Custom song scanner script
+
+## Documentation
+
+More detailed documentation lives in [docs/](docs/):
+
+- [Project Report](docs/PROJECT_REPORT.md): app complexity, feature depth, line counts, timeline, cost estimate, build team estimate, limitations, and roadmap
 
 ## Project scripts
 
@@ -168,5 +191,9 @@ The app is already in a strong usable state, and the next high-impact improvemen
 ## Author
 
 Designed and developed by Thangella.
+
+Thangella's role in GT Music went beyond giving simple instructions. The project was shaped through product thinking, prompt engineering, AI-agent direction, UI/UX review, mobile testing feedback, catalog decisions, and repeated quality checks. A major part of the development process was knowing how to communicate precise requirements to AI tools, break large work into clear tasks, manage context and token usage carefully, and guide the agent toward production-ready implementation without wasting limits.
+
+This project shows practical AI-assisted application development skill: turning an idea into a working product by combining clear prompting, iterative testing, fast feedback, and strong ownership of the final experience.
 
 Built for a cleaner, more personal way to listen.
