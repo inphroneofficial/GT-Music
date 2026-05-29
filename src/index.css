@@ -343,6 +343,53 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  .search-page-shell {
+    width: min(100%, var(--app-width, 100vw));
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .search-input-shell,
+    .mobile-x-rail {
+      display: flex;
+      gap: 0.75rem;
+      width: calc(var(--app-width, 100vw) - 1.5rem);
+      max-width: calc(var(--app-width, 100vw) - 1.5rem);
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      padding-bottom: 0.5rem;
+      scroll-padding-inline: 0.75rem;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .search-input-shell {
+      display: block;
+      overflow-x: hidden;
+      padding-bottom: 0;
+      scroll-snap-type: none;
+    }
+
+    .mobile-x-rail::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mobile-x-rail > * {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+
+    .mobile-x-rail,
+    .mobile-x-rail * {
+      touch-action: pan-x;
+    }
+  }
+
   .mood-scroll-rail {
     cursor: grab;
     display: flex;
