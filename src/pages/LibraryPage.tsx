@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Album,
+  BadgePlus,
   Download,
+  Gem,
   Heart,
   LibraryBig,
   ListMusic,
   Mic2,
   Music,
   Plus,
+  Repeat2,
   TimerReset,
   TrendingUp,
 } from 'lucide-react';
@@ -34,7 +37,10 @@ type LibrarySection =
   | 'playlists'
   | 'recent'
   | 'mostPlayed'
-  | 'downloaded';
+  | 'downloaded'
+  | 'recentlyAdded'
+  | 'repeatFavorites'
+  | 'forgotten';
 
 const sections: Array<{
   value: LibrarySection;
@@ -50,6 +56,9 @@ const sections: Array<{
   { value: 'playlists', label: 'Playlists', shortLabel: 'Playlists', icon: ListMusic, tone: 'from-cyan-500/20 to-cyan-500/5' },
   { value: 'recent', label: 'Recently Played', shortLabel: 'Recent', icon: TimerReset, tone: 'from-amber-500/20 to-amber-500/5' },
   { value: 'mostPlayed', label: 'Most Played', shortLabel: 'Top', icon: TrendingUp, tone: 'from-violet-500/20 to-violet-500/5' },
+  { value: 'recentlyAdded', label: 'Recently Added', shortLabel: 'New', icon: BadgePlus, tone: 'from-lime-500/20 to-lime-500/5' },
+  { value: 'repeatFavorites', label: 'Repeat Favorites', shortLabel: 'Repeats', icon: Repeat2, tone: 'from-fuchsia-500/20 to-fuchsia-500/5' },
+  { value: 'forgotten', label: 'Forgotten Gems', shortLabel: 'Gems', icon: Gem, tone: 'from-yellow-500/20 to-yellow-500/5' },
   { value: 'downloaded', label: 'Downloaded', shortLabel: 'Local', icon: Download, tone: 'from-teal-500/20 to-teal-500/5' },
 ];
 
@@ -66,26 +75,52 @@ const LibraryPage = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<LibrarySection>('all');
+  const deferredSongs = useDeferredValue(allSongs);
 
   const likedSongs = useMemo(
-    () => allSongs.filter((song) => likedSongIds.includes(song.id)),
-    [allSongs, likedSongIds],
+    () => deferredSongs.filter((song) => likedSongIds.includes(song.id)),
+    [deferredSongs, likedSongIds],
   );
 
   const recentlyPlayedSongs = useMemo(
-    () => recentlyPlayed.map((id) => allSongs.find((song) => song.id === id)).filter(Boolean) as typeof allSongs,
-    [allSongs, recentlyPlayed],
+    () => recentlyPlayed.map((id) => deferredSongs.find((song) => song.id === id)).filter(Boolean) as typeof deferredSongs,
+    [deferredSongs, recentlyPlayed],
   );
 
   const mostPlayedSongs = useMemo(() => {
-    return [...allSongs]
+    return [...deferredSongs]
       .sort((left, right) => (playCounts[right.id] || 0) - (playCounts[left.id] || 0))
       .filter((song) => (playCounts[song.id] || 0) > 0);
-  }, [allSongs, playCounts]);
+  }, [deferredSongs, playCounts]);
+
+  const recentlyAddedSongs = useMemo(
+    () => [...deferredSongs].slice(-30).reverse(),
+    [deferredSongs],
+  );
+
+  const repeatFavoriteSongs = useMemo(() => {
+    const scored = deferredSongs
+      .map((song) => ({
+        song,
+        score: (playCounts[song.id] || 0) * 3 + (likedSongIds.includes(song.id) ? 5 : 0),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score || left.song.title.localeCompare(right.song.title))
+      .map((entry) => entry.song);
+
+    return scored.length > 0 ? scored : likedSongs;
+  }, [deferredSongs, likedSongIds, likedSongs, playCounts]);
+
+  const forgottenGemSongs = useMemo(() => {
+    const recentSet = new Set(recentlyPlayed);
+    return deferredSongs
+      .filter((song) => !recentSet.has(song.id) && !likedSongIds.includes(song.id) && (playCounts[song.id] || 0) === 0)
+      .slice(0, 40);
+  }, [deferredSongs, likedSongIds, playCounts, recentlyPlayed]);
 
   const albums = useMemo(() => {
     const grouped = new Map<string, { name: string; artist: string; cover: string }>();
-    allSongs.forEach((song) => {
+    deferredSongs.forEach((song) => {
       if (!grouped.has(song.album)) {
         grouped.set(song.album, {
           name: song.album,
@@ -95,11 +130,11 @@ const LibraryPage = () => {
       }
     });
     return Array.from(grouped.values());
-  }, [allSongs]);
+  }, [deferredSongs]);
 
   const artists = useMemo(() => {
     const grouped = new Map<string, { name: string; cover: string; songCount: number }>();
-    allSongs.forEach((song) => {
+    deferredSongs.forEach((song) => {
       if (!grouped.has(song.artist)) {
         grouped.set(song.artist, {
           name: song.artist,
@@ -110,7 +145,7 @@ const LibraryPage = () => {
       grouped.get(song.artist)!.songCount += 1;
     });
     return Array.from(grouped.values());
-  }, [allSongs]);
+  }, [deferredSongs]);
 
   const sectionMeta = useMemo(() => ({
     all: { title: 'All Songs', detail: `${allSongs.length} tracks in your full music library` },
@@ -120,10 +155,25 @@ const LibraryPage = () => {
     playlists: { title: 'Playlists', detail: `${playlists.length} custom playlists` },
     recent: { title: 'Recently Played', detail: `${recentlyPlayedSongs.length} songs from recent sessions` },
     mostPlayed: { title: 'Most Played', detail: `${mostPlayedSongs.length} tracks with real listening activity` },
+    recentlyAdded: { title: 'Recently Added', detail: `${recentlyAddedSongs.length} newest tracks from your catalog order` },
+    repeatFavorites: { title: 'Repeat Favorites', detail: `${repeatFavoriteSongs.length} songs GT Music thinks you come back to` },
+    forgotten: { title: 'Forgotten Gems', detail: `${forgottenGemSongs.length} quiet tracks waiting to be rediscovered` },
     downloaded: { title: 'Downloaded', detail: `${allSongs.length} local tracks ready to play` },
-  }), [albums.length, allSongs.length, artists.length, likedSongs.length, mostPlayedSongs.length, playlists.length, recentlyPlayedSongs.length]);
+  }), [albums.length, allSongs.length, artists.length, forgottenGemSongs.length, likedSongs.length, mostPlayedSongs.length, playlists.length, recentlyAddedSongs.length, recentlyPlayedSongs.length, repeatFavoriteSongs.length]);
 
   const activeMeta = sectionMeta[activeSection];
+  const activeCount = useMemo(() => {
+    if (activeSection === 'all' || activeSection === 'downloaded') return `${allSongs.length} songs`;
+    if (activeSection === 'albums') return `${albums.length} albums`;
+    if (activeSection === 'artists') return `${artists.length} artists`;
+    if (activeSection === 'liked') return `${likedSongs.length} liked`;
+    if (activeSection === 'playlists') return `${playlists.length} playlists`;
+    if (activeSection === 'recent') return `${recentlyPlayedSongs.length} recent`;
+    if (activeSection === 'mostPlayed') return `${mostPlayedSongs.length} tracked`;
+    if (activeSection === 'recentlyAdded') return `${recentlyAddedSongs.length} new`;
+    if (activeSection === 'repeatFavorites') return `${repeatFavoriteSongs.length} repeats`;
+    return `${forgottenGemSongs.length} gems`;
+  }, [activeSection, albums.length, allSongs.length, artists.length, forgottenGemSongs.length, likedSongs.length, mostPlayedSongs.length, playlists.length, recentlyAddedSongs.length, recentlyPlayedSongs.length, repeatFavoriteSongs.length]);
 
   const handleCreatePlaylist = () => {
     if (!newPlaylistName.trim()) return;
@@ -175,8 +225,8 @@ const LibraryPage = () => {
           <MiniStat label="Liked" value={`${likedSongs.length}`} />
         </div>
 
-        <div className="-mx-4 mb-5 overflow-x-auto no-scrollbar px-4 md:mx-0 md:px-0 md:overflow-visible">
-          <div className="flex w-max gap-2.5 pb-1 md:grid md:w-full md:grid-cols-4 md:gap-3 xl:grid-cols-8">
+        <div className="-mx-4 mb-5 overflow-x-auto no-scrollbar px-4 md:mx-0 md:px-0">
+          <div className="flex w-max gap-2.5 pb-1 md:gap-3">
             {sections.map(({ value, label, shortLabel, icon: Icon, tone }) => {
               const active = activeSection === value;
               return (
@@ -184,7 +234,7 @@ const LibraryPage = () => {
                   key={value}
                   type="button"
                   onClick={() => setActiveSection(value)}
-                  className={`relative min-w-[132px] overflow-hidden rounded-[1.35rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press md:min-w-0 md:px-4 md:py-4 ${
+                  className={`relative min-w-[132px] overflow-hidden rounded-[1.35rem] border px-3.5 py-3 text-left transition-all duration-300 btn-press md:min-w-[150px] md:px-4 md:py-4 ${
                     active
                       ? 'border-primary/30 bg-card shadow-[0_14px_30px_-24px_hsl(var(--primary)/0.45)]'
                       : 'border-border/30 bg-card/55 hover:bg-card/80'
@@ -211,13 +261,7 @@ const LibraryPage = () => {
             <p className="pt-0.5 text-xs text-muted-foreground md:text-sm">{activeMeta.detail}</p>
           </div>
           <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground md:mt-0">
-            <span>{activeSection === 'all' || activeSection === 'downloaded' ? `${allSongs.length} songs` : null}</span>
-            <span>{activeSection === 'albums' ? `${albums.length} albums` : null}</span>
-            <span>{activeSection === 'artists' ? `${artists.length} artists` : null}</span>
-            <span>{activeSection === 'liked' ? `${likedSongs.length} liked` : null}</span>
-            <span>{activeSection === 'playlists' ? `${playlists.length} playlists` : null}</span>
-            <span>{activeSection === 'recent' ? `${recentlyPlayedSongs.length} recent` : null}</span>
-            <span>{activeSection === 'mostPlayed' ? `${mostPlayedSongs.length} tracked` : null}</span>
+            <span>{activeCount}</span>
           </div>
         </div>
       </div>
@@ -273,6 +317,42 @@ const LibraryPage = () => {
             maxHeightClassName="max-h-[62vh]"
             containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
           />
+        )}
+
+        {activeSection === 'recentlyAdded' && (
+          recentlyAddedSongs.length === 0 ? (
+            <EmptyState icon={<BadgePlus className="h-7 w-7 text-muted-foreground" />} title="No new songs yet" detail="Newly imported songs will appear here automatically." />
+          ) : (
+            <VirtualizedSongList
+              songs={recentlyAddedSongs}
+              maxHeightClassName="max-h-[62vh]"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
+            />
+          )
+        )}
+
+        {activeSection === 'repeatFavorites' && (
+          repeatFavoriteSongs.length === 0 ? (
+            <EmptyState icon={<Repeat2 className="h-7 w-7 text-muted-foreground" />} title="No repeat favorites yet" detail="Like songs or play them often and GT Music will build this section." />
+          ) : (
+            <VirtualizedSongList
+              songs={repeatFavoriteSongs}
+              maxHeightClassName="max-h-[62vh]"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
+            />
+          )
+        )}
+
+        {activeSection === 'forgotten' && (
+          forgottenGemSongs.length === 0 ? (
+            <EmptyState icon={<Gem className="h-7 w-7 text-muted-foreground" />} title="No forgotten gems yet" detail="Once your listening history grows, quiet tracks will be surfaced here." />
+          ) : (
+            <VirtualizedSongList
+              songs={forgottenGemSongs}
+              maxHeightClassName="max-h-[62vh]"
+              containerClassName="border border-border/25 bg-card/35 rounded-[1.4rem] px-2 py-2 md:px-3"
+            />
+          )
         )}
 
         {activeSection === 'albums' && (

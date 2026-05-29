@@ -8,24 +8,12 @@ import { AlbumCard } from '@/components/MusicCards';
 import { SEO } from '@/components/SEO';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MOOD_META } from '@/lib/moods';
+import { getSearchSuggestions, normalizeSearchText, searchLibrary } from '@/lib/search';
 import { resolveSongCoverPath } from '@/lib/songMetadata';
-import type { Song } from '@/types/music';
+import type { SongMood } from '@/types/music';
 
-type Filter = 'all' | 'songs' | 'artists' | 'albums';
-
-type ArtistResult = {
-  name: string;
-  songs: Song[];
-  score: number;
-};
-
-type AlbumResult = {
-  name: string;
-  artist: string;
-  cover: string;
-  songs: Song[];
-  score: number;
-};
+type Filter = 'all' | 'songs' | 'artists' | 'albums' | 'moods';
 
 const GENRE_GRADIENTS: Record<string, string> = {
   pop: 'from-pink-500 to-violet-500',
@@ -44,51 +32,6 @@ const GENRE_GRADIENTS: Record<string, string> = {
   folk: 'from-green-500 to-emerald-600',
 };
 
-const normalizeSearchText = (value = '') =>
-  value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/%20/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-
-const compactSearchText = (value: string) => value.replace(/\s+/g, '');
-
-function scoreField(value: string | undefined, query: string, tokens: string[], boost: number) {
-  const field = normalizeSearchText(value);
-  if (!field || !query) return 0;
-
-  const compactField = compactSearchText(field);
-  const compactQuery = compactSearchText(query);
-  let score = 0;
-
-  if (field === query) score += boost + 40;
-  if (field.startsWith(query)) score += boost + 22;
-  if (field.includes(query)) score += boost;
-  if (compactQuery.length > 2 && compactField.includes(compactQuery)) score += Math.round(boost * 0.65);
-
-  tokens.forEach((token) => {
-    if (field === token) score += 12;
-    else if (field.startsWith(token)) score += 9;
-    else if (field.includes(token)) score += 6;
-    else if (compactField.includes(token)) score += 3;
-  });
-
-  return score;
-}
-
-function scoreSong(song: Song, query: string, tokens: string[]) {
-  return (
-    scoreField(song.title, query, tokens, 42) +
-    scoreField(song.artist, query, tokens, 32) +
-    scoreField(song.album, query, tokens, 28) +
-    scoreField(song.mood, query, tokens, 24) +
-    scoreField(song.genre, query, tokens, 18) +
-    scoreField(song.file, query, tokens, 16)
-  );
-}
-
 const SearchPage = () => {
   const navigate = useNavigate();
   const { allSongs, playSong } = useMusic();
@@ -100,72 +43,15 @@ const SearchPage = () => {
   const deferredQ = normalizeSearchText(deferredQuery);
   const q = rawQ ? deferredQ : '';
   const isSearchSettling = rawQ !== deferredQ;
-  const queryTokens = useMemo(() => q.split(' ').filter(Boolean), [q]);
 
-  const filteredSongs = useMemo(() => {
-    if (!q) return [];
+  const searchResults = useMemo(() => searchLibrary(allSongs, q), [allSongs, q]);
+  const searchSuggestions = useMemo(() => getSearchSuggestions(allSongs), [allSongs]);
 
-    return allSongs
-      .map((song) => ({ song, score: scoreSong(song, q, queryTokens) }))
-      .filter((result) => result.score > 0)
-      .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
-      .map((result) => result.song);
-  }, [allSongs, q, queryTokens]);
-
-  const artists = useMemo<ArtistResult[]>(() => {
-    if (!q) return [];
-
-    const map = new Map<string, ArtistResult>();
-
-    allSongs.forEach((song) => {
-      const name = song.artist || 'Unknown Artist';
-      const songScore = scoreSong(song, q, queryTokens);
-      const artistScore = scoreField(name, q, queryTokens, 36) + Math.round(songScore * 0.45);
-      if (artistScore <= 0) return;
-
-      const existing = map.get(name);
-      if (existing) {
-        existing.songs.push(song);
-        existing.score = Math.max(existing.score, artistScore);
-      } else {
-        map.set(name, { name, songs: [song], score: artistScore });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  }, [allSongs, q, queryTokens]);
-
-  const albums = useMemo<AlbumResult[]>(() => {
-    if (!q) return [];
-
-    const map = new Map<string, AlbumResult>();
-
-    allSongs.forEach((song) => {
-      const name = song.album || 'Unknown Album';
-      const songScore = scoreSong(song, q, queryTokens);
-      const albumScore =
-        scoreField(name, q, queryTokens, 36) +
-        scoreField(song.artist, q, queryTokens, 18) +
-        Math.round(songScore * 0.35);
-      if (albumScore <= 0) return;
-
-      const existing = map.get(name);
-      if (existing) {
-        existing.songs.push(song);
-        existing.score = Math.max(existing.score, albumScore);
-      } else {
-        map.set(name, {
-          name,
-          artist: song.artist,
-          cover: resolveSongCoverPath(song.cover),
-          songs: [song],
-          score: albumScore,
-        });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  }, [allSongs, q, queryTokens]);
+  const filteredSongEntries = searchResults.songs;
+  const filteredSongs = useMemo(() => filteredSongEntries.map((entry) => entry.song), [filteredSongEntries]);
+  const artists = searchResults.artists;
+  const albums = searchResults.albums;
+  const moods = searchResults.moods;
 
   const genres = useMemo(() => {
     const set = new Set<string>();
@@ -175,14 +61,16 @@ const SearchPage = () => {
     return Array.from(set).sort();
   }, [allSongs]);
 
-  const totalResults = filteredSongs.length + artists.length + albums.length;
-  const bestSong = filteredSongs[0];
+  const totalResults = filteredSongs.length + artists.length + albums.length + moods.length;
+  const bestSong = filteredSongEntries[0]?.song;
+  const bestReason = filteredSongEntries[0]?.reason;
 
   const filters: { label: string; value: Filter; count: number }[] = [
     { label: 'All', value: 'all', count: totalResults },
     { label: 'Songs', value: 'songs', count: filteredSongs.length },
     { label: 'Artists', value: 'artists', count: artists.length },
     { label: 'Albums', value: 'albums', count: albums.length },
+    { label: 'Moods', value: 'moods', count: moods.length },
   ];
 
   return (
@@ -204,11 +92,26 @@ const SearchPage = () => {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try song, movie, singer, genre, or file name..."
+              placeholder="Try typo-friendly search: song, movie, singer, mood..."
               className="h-12 rounded-2xl border-border/50 bg-card pl-12 text-base text-foreground shadow-sm transition-all duration-300 placeholder:text-muted-foreground focus:border-primary/50 focus:shadow-[0_0_26px_hsla(var(--primary)/0.16)] md:h-14"
             />
           </div>
         </div>
+
+        {!rawQ && searchSuggestions.length > 0 && (
+          <div className="mb-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar animate-fade-in">
+            {searchSuggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion}-${index}`}
+                type="button"
+                onClick={() => setQuery(suggestion)}
+                className="btn-press whitespace-nowrap rounded-full border border-border/40 bg-card/70 px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/30 hover:text-primary"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
 
         {q && (
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1 animate-fade-in md:mb-6">
@@ -264,6 +167,7 @@ const SearchPage = () => {
               <p className="truncate text-sm text-muted-foreground">
                 {bestSong.artist} / {bestSong.album}
               </p>
+              {bestReason ? <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">{bestReason} match</p> : null}
             </div>
             <span className="hidden rounded-full border border-primary/25 bg-primary px-4 py-2 text-sm font-bold text-primary-foreground md:inline-flex">
               Play
@@ -304,13 +208,30 @@ const SearchPage = () => {
           </div>
         )}
 
+        {q && !isSearchSettling && (filter === 'all' || filter === 'moods') && moods.length > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-lg font-bold text-foreground animate-fade-in">Mood lanes</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {moods.map((entry, index) => (
+                <MoodSearchCard
+                  key={entry.mood}
+                  mood={entry.mood}
+                  count={entry.songs.length}
+                  delay={index * 55}
+                  onClick={() => navigate(`/mood/${entry.mood}`)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {q && !isSearchSettling && (filter === 'all' || filter === 'songs') && filteredSongs.length > 0 && (
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-bold text-foreground animate-fade-in">Songs</h2>
             <div className="space-y-0.5">
-              {filteredSongs.map((song, index) => (
-                <div key={song.id} className="animate-slide-in-left" style={{ animationDelay: `${index * 28}ms` }}>
-                  <SongRow song={song} index={index} context={filteredSongs} />
+              {filteredSongEntries.map((entry, index) => (
+                <div key={entry.song.id} className="animate-slide-in-left" style={{ animationDelay: `${index * 28}ms` }}>
+                  <SongRow song={entry.song} index={index} context={filteredSongs} />
                 </div>
               ))}
             </div>
@@ -353,7 +274,7 @@ const SearchPage = () => {
                   <AlbumCard
                     name={album.name}
                     artist={`${album.artist} / ${album.songs.length} songs`}
-                    cover={album.cover}
+                    cover={resolveSongCoverPath(album.cover)}
                     onClick={() => navigate(`/album/${encodeURIComponent(album.name)}`)}
                   />
                 </div>
@@ -377,5 +298,42 @@ const SearchPage = () => {
     </ScrollArea>
   );
 };
+
+function MoodSearchCard({
+  mood,
+  count,
+  delay,
+  onClick,
+}: {
+  mood: SongMood;
+  count: number;
+  delay: number;
+  onClick: () => void;
+}) {
+  const meta = MOOD_META[mood];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[1.5rem] border border-border/35 bg-gradient-to-br ${meta.gradient} p-4 text-left transition-all hover:-translate-y-1 hover:border-primary/35 animate-fade-in-scale`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="absolute inset-0 bg-card/35 opacity-70 transition-opacity group-hover:opacity-40" />
+      <div className="relative">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <span className="rounded-full border border-primary/20 bg-background/45 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+            {meta.signal}
+          </span>
+          <span className="rounded-full bg-background/45 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            {count} songs
+          </span>
+        </div>
+        <h3 className="text-xl font-extrabold text-foreground">{meta.label}</h3>
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{meta.description}</p>
+      </div>
+    </button>
+  );
+}
 
 export default SearchPage;
